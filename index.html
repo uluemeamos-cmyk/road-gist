@@ -493,7 +493,14 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   const $ = (id) => document.getElementById(id);
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
   const DEVICE = ls.get("rg-device") || (() => { const id = "d" + Math.random().toString(36).slice(2) + Date.now().toString(36); ls.set("rg-device", id); return id; })();
-  let curCity = ls.get("rg-city") || "capetown";
+  // Starting city before GPS answers: last city used, else guess from the phone's time zone (Nigeria = Africa/Lagos)
+  function cityFromTimeZone() {
+    let tz = ""; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch {}
+    if (tz === "Africa/Lagos") return "lagos";
+    if (tz === "Africa/Johannesburg") return "capetown";
+    return null;
+  }
+  let curCity = ls.get("rg-city") || cityFromTimeZone() || "capetown";
   if (!CITIES[curCity]) curCity = "capetown";
   const CT = { lat: CITIES[curCity].center[0], lng: CITIES[curCity].center[1] };
   // Best name for a spot: nearby area, else the city, else what the map service calls the town
@@ -727,9 +734,15 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   function startGps() {
     if (!("geolocation" in navigator)) { notice("This phone no fit share location, so the map no go follow you."); return; }
-    navigator.geolocation.watchPosition(onPos, (e) => {
-      if (e.code === 1) notice("Allow location make Road Clear show where you dey and warn you before roadblock. Check Settings → Safari → Location.");
-    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const howTo = ios ? "On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using." : "On Android: tap the lock or settings icon beside the web address, then Permissions → Location → Allow.";
+    const onErr = (e) => {
+      if (e.code === 1) notice("Road Clear no fit see your location, so the map dey show " + CITIES[curCity].name + ". Allow location make e show where you dey. " + howTo);
+    };
+    // Quick rough fix first (works indoors), then accurate GPS
+    navigator.geolocation.getCurrentPosition(onPos, onErr, { enableHighAccuracy: false, maximumAge: 600000, timeout: 10000 });
+    navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+    setTimeout(() => { if (!me && $("notice").hidden) notice("I still dey find your location. Make sure location dey on for your phone and you allow am for Road Clear. " + howTo); }, 20000);
   }
   const fresh = () => me && Date.now() - me.t < 120e3;
 
