@@ -86,6 +86,14 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
 .confirm { display: grid; gap: 8px; background: var(--danger-soft); border-radius: 10px; padding: 10px; font-size: 14px; }
 .confirm label { display: flex; gap: 8px; align-items: center; font-weight: 500; }
 .confirm input { width: auto; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.split h3 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tbl td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.tbl td:last-child { text-align: right; font-weight: 700; }
+.tbl tr:last-child td { border-bottom: 0; }
+.section-title { margin: 4px 0 -4px; font-family: var(--display); font-size: 20px; }
+@media (max-width: 480px) { .split { grid-template-columns: 1fr; } }
 .empty { text-align: center; padding: 24px 12px; border: 2px dashed var(--line); border-radius: 14px; color: var(--muted); }
 .blocked-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .blocked-row:last-child { border-bottom: 0; }
@@ -113,6 +121,21 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
   </form>
 
   <section id="app" hidden style="display:grid;gap:16px">
+    <div class="card" id="users">
+      <h2>People using Road Clear</h2>
+      <div class="stats">
+        <div class="stat"><b id="u-today">–</b><span>Phones today</span></div>
+        <div class="stat"><b id="u-week">–</b><span>Phones this week</span></div>
+        <div class="stat"><b id="u-month">–</b><span>Phones this month</span></div>
+      </div>
+      <div class="split">
+        <div><h3>This week by city</h3><table class="tbl" id="u-city"></table></div>
+        <div><h3>Last 14 days</h3><table class="tbl" id="u-days"></table></div>
+      </div>
+      <p class="small" id="u-note" style="margin:0">Each phone counts once a day. Only the city is recorded, never the exact location.</p>
+    </div>
+
+    <h2 class="section-title">Reports</h2>
     <div class="stats">
       <div class="stat"><b id="s-live">0</b><span>Showing on the map now</span></div>
       <div class="stat"><b id="s-today">0</b><span>Reports today</span></div>
@@ -203,7 +226,21 @@ const CONFIG = {
     const byId = Object.fromEntries(reports.map(r => [r.id, r]));
     for (const c of cons) { const r = byId[c.report_id]; if (r) r[c.kind][c.device_id] = Math.max(r[c.kind][c.device_id] || 0, Date.parse(c.created_at)); }
     render(); renderBlocked(bl || []);
+    loadUsers();
     $("refresh").disabled = false;
+  }
+  const CITY_NAMES = { capetown: "Cape Town", lagos: "Lagos", abuja: "Abuja", ph: "Port Harcourt", other: "Other places", unknown: "Location off" };
+  async function loadUsers() {
+    const { data, error } = await sb.rpc("rc_usage");
+    if (error) { $("u-note").textContent = "User counts need the usage.sql update in Supabase."; return; }
+    $("u-today").textContent = data.today; $("u-week").textContent = data.week; $("u-month").textContent = data.month;
+    const fill = (id, rows, label) => {
+      const t = $(id); t.replaceChildren();
+      if (!rows.length) { const tr = t.insertRow(); tr.insertCell().textContent = "No data yet"; tr.insertCell(); return; }
+      for (const r of rows) { const tr = t.insertRow(); tr.insertCell().textContent = label(r); tr.insertCell().textContent = r.users; }
+    };
+    fill("u-city", data.by_city || [], r => CITY_NAMES[r.city] || r.city);
+    fill("u-days", data.daily || [], r => new Date(r.day + "T12:00:00").toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }));
   }
   const lastSeen = (r) => Math.max(r.t, ...Object.values(r.still));
   function isLive(r) {

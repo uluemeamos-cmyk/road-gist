@@ -531,7 +531,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       async refresh() { reports = load(); emit(); },
       async add(r) { const rows = load(); rows.unshift({ id: "l" + Date.now(), ...r, createdAt: Date.now(), by: DEVICE, still: { [DEVICE]: Date.now() }, cleared: {} }); save(rows); await this.refresh(); return { queued: false }; },
       async confirm(id, kind) { const rows = load(); const r = rows.find(x => x.id === id); if (r) { r[kind] = r[kind] || {}; r[kind][DEVICE] = Date.now(); save(rows); } await this.refresh(); },
-      start() { this.refresh(); }
+      start() { this.refresh(); },
+      async ping() {}
     };
   }
   /* Offline helpers */
@@ -616,6 +617,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         if (!fromQueue) await this.refresh();
         return { queued: false };
       },
+      // Counts this phone once a day for the admin page (city only, no exact location)
+      async ping(city) { const { error } = await sb.rpc("rc_ping", { p_device: DEVICE, p_city: city }); if (error) throw error; },
       async confirm(id, kind, fromQueue) {
         if (String(id).startsWith("q")) return { queued: true };
         if (!fromQueue && !navigator.onLine) { enqueue({ kind: "vote", id, vote: kind }); return { queued: true }; }
@@ -739,6 +742,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (dot) { const moving = me.heading != null && (me.speed == null || me.speed > 1.5); dot.classList.toggle("moving", moving); if (moving) dot.querySelector(".arrow").style.transform = `rotate(${me.heading}deg)`; }
     const nowCity = cityOf(me);
     if (nowCity && nowCity !== curCity) { curCity = nowCity; ls.set("rg-city", nowCity); fillAreaSelect(); }
+    countUser(nowCity || "other");
     if (firstFix) { firstFix = false; map.setView(ll, 15); }
     else if (follow) map.setView(ll, nav ? Math.max(map.getZoom(), 16) : map.getZoom(), { animate: true });
     guidance(); checkWarnings();
@@ -1285,6 +1289,18 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
   /* ===== 13. Start ===== */
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  /* Daily user count: one ping per phone per day, upgraded once the city is known */
+  let pingBusy = false;
+  async function countUser(city) {
+    const day = new Date().toLocaleDateString("en-CA"), last = (ls.get("rg-ping") || "").split("|");
+    if (pingBusy || !navigator.onLine) return;
+    if (last[0] === day && (last[1] !== "unknown" || city === "unknown")) return;
+    pingBusy = true;
+    try { await store.ping(city); ls.set("rg-ping", day + "|" + city); } catch {} finally { pingBusy = false; }
+  }
+  setTimeout(() => countUser(me ? (cityOf(me) || "other") : "unknown"), 20000);
+  window.addEventListener("online", () => countUser(me ? (cityOf(me) || "other") : "unknown"));
+
   store.start();
   startGps();
   loadClips();
