@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Clear">
-<meta name="description" content="Police roadblock and go-slow alerts for our people for Cape Town, in Pidgin.">
+<meta name="description" content="Police roadblock and go-slow alerts in Pidgin, for Cape Town, Lagos, Abuja and Port Harcourt.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
@@ -281,28 +281,78 @@ const CONFIG = {
 </script>
 <script>
 // PARSER START
-const AREAS = ["Athlone","Bellville","Brackenfell","Cape Town CBD","Century City","Claremont","Durbanville","Goodwood","Khayelitsha","Kuils River","Milnerton","Mitchells Plain","Mowbray","Muizenberg","Observatory","Paarl","Parow","Rondebosch","Salt River","Sea Point","Somerset West","Stellenbosch","Strand","Table View","Woodstock","Wynberg"];
-const AREA_CENTERS = {
-  "Athlone":[-33.9614,18.5047],"Bellville":[-33.9003,18.6290],"Brackenfell":[-33.8790,18.6990],"Cape Town CBD":[-33.9249,18.4241],
-  "Century City":[-33.8920,18.5110],"Claremont":[-33.9806,18.4650],"Durbanville":[-33.8320,18.6470],"Goodwood":[-33.9120,18.5520],
-  "Khayelitsha":[-34.0400,18.6770],"Kuils River":[-33.9230,18.6830],"Milnerton":[-33.8700,18.4950],"Mitchells Plain":[-34.0430,18.6180],
-  "Mowbray":[-33.9470,18.4760],"Muizenberg":[-34.1080,18.4700],"Observatory":[-33.9380,18.4700],"Paarl":[-33.7340,18.9620],
-  "Parow":[-33.9000,18.5850],"Rondebosch":[-33.9620,18.4760],"Salt River":[-33.9300,18.4600],"Sea Point":[-33.9150,18.3880],
-  "Somerset West":[-34.0780,18.8430],"Stellenbosch":[-33.9320,18.8600],"Strand":[-34.1150,18.8270],"Table View":[-33.8240,18.4900],
-  "Woodstock":[-33.9280,18.4470],"Wynberg":[-34.0040,18.4680]
+// Cities Road Clear knows. center = [lat, lng], radius in metres, bbox for search = minLon,minLat,maxLon,maxLat
+const CITIES = {
+  capetown: { name: "Cape Town", center: [-33.93, 18.55], radius: 90000, bbox: "17.6,-34.9,19.9,-33.0" },
+  lagos: { name: "Lagos", center: [6.53, 3.38], radius: 70000, bbox: "2.70,6.35,4.10,6.85" },
+  abuja: { name: "Abuja", center: [9.06, 7.45], radius: 60000, bbox: "6.95,8.75,7.80,9.35" },
+  ph: { name: "Port Harcourt", center: [4.82, 7.02], radius: 50000, bbox: "6.80,4.60,7.30,5.05" }
 };
+const CITY_AREAS = {
+  capetown: {
+    "Athlone":[-33.9614,18.5047],"Bellville":[-33.9003,18.6290],"Brackenfell":[-33.8790,18.6990],"Cape Town CBD":[-33.9249,18.4241],
+    "Century City":[-33.8920,18.5110],"Claremont":[-33.9806,18.4650],"Durbanville":[-33.8320,18.6470],"Goodwood":[-33.9120,18.5520],
+    "Khayelitsha":[-34.0400,18.6770],"Kuils River":[-33.9230,18.6830],"Milnerton":[-33.8700,18.4950],"Mitchells Plain":[-34.0430,18.6180],
+    "Mowbray":[-33.9470,18.4760],"Muizenberg":[-34.1080,18.4700],"Observatory":[-33.9380,18.4700],"Paarl":[-33.7340,18.9620],
+    "Parow":[-33.9000,18.5850],"Rondebosch":[-33.9620,18.4760],"Salt River":[-33.9300,18.4600],"Sea Point":[-33.9150,18.3880],
+    "Somerset West":[-34.0780,18.8430],"Stellenbosch":[-33.9320,18.8600],"Strand":[-34.1150,18.8270],"Table View":[-33.8240,18.4900],
+    "Woodstock":[-33.9280,18.4470],"Wynberg":[-34.0040,18.4680]
+  },
+  lagos: {
+    "Agege":[6.6150,3.3240],"Ajah":[6.4670,3.5700],"Apapa":[6.4490,3.3590],"Berger":[6.6414,3.3667],"Festac":[6.4660,3.2830],
+    "Gbagada":[6.5550,3.3900],"Ikeja":[6.6018,3.3515],"Ikorodu":[6.6190,3.5100],"Ikotun":[6.5500,3.2600],"Ikoyi":[6.4520,3.4350],
+    "Iyana Ipaja":[6.6140,3.2940],"Ketu":[6.5970,3.3870],"Lagos Island":[6.4550,3.3940],"Lekki":[6.4474,3.4723],
+    "Maryland":[6.5700,3.3670],"Mile 2":[6.4600,3.3150],"Mushin":[6.5300,3.3500],"Obalende":[6.4500,3.4040],"Ogba":[6.6280,3.3410],
+    "Ojota":[6.5870,3.3800],"Oshodi":[6.5550,3.3430],"Sangotedo":[6.4700,3.6300],"Surulere":[6.5006,3.3581],
+    "Victoria Island":[6.4281,3.4219],"Yaba":[6.5095,3.3711]
+  },
+  abuja: {
+    "Asokoro":[9.0400,7.5200],"Central Area":[9.0550,7.4900],"Garki":[9.0300,7.4900],"Gwarinpa":[9.1100,7.4100],"Jabi":[9.0700,7.4300],
+    "Karu":[9.0100,7.5700],"Kubwa":[9.1600,7.3300],"Lokogoma":[8.9900,7.4600],"Lugbe":[8.9800,7.3700],"Maitama":[9.0900,7.4950],
+    "Nyanya":[9.0200,7.5800],"Utako":[9.0700,7.4400],"Wuse":[9.0750,7.4750]
+  },
+  ph: {
+    "Ada George":[4.8500,6.9700],"Choba":[4.8900,6.9200],"Eleme":[4.7900,7.1200],"GRA":[4.8150,7.0050],"Mile 1":[4.7900,6.9950],
+    "Mile 3":[4.8000,6.9900],"Oyigbo":[4.8800,7.1500],"Rumuokoro":[4.8700,7.0000],"Rumuola":[4.8400,7.0100],
+    "Rumuokwuta":[4.8550,6.9900],"Trans Amadi":[4.8150,7.0350],"Woji":[4.8300,7.0500]
+  }
+};
+const AREA_CENTERS = Object.assign({}, ...Object.values(CITY_AREAS));
+const AREA_CITY = Object.fromEntries(Object.entries(CITY_AREAS).flatMap(([c, a]) => Object.keys(a).map(n => [n, c])));
+// [pattern, area, city, local] — "local" patterns are generic words that only count inside that city
 const AREA_ALIASES = [
-  ["mitchells? plain|mitchells?", "Mitchells Plain"], ["kuils ?river|kuils", "Kuils River"],
-  ["somerset west|somerset", "Somerset West"], ["table ?view", "Table View"], ["sea ?point", "Sea Point"],
-  ["salt ?river", "Salt River"], ["century city|century", "Century City"], ["observatory|\\bobs\\b", "Observatory"],
-  ["khayelitsha|khayelisha|kayelitsha", "Khayelitsha"], ["stellenbosch|stellies", "Stellenbosch"],
-  ["bellville|belville|bell ville", "Bellville"], ["brackenfell|bracken fell", "Brackenfell"],
-  ["durbanville|durban ville", "Durbanville"], ["muizenberg|muisenberg", "Muizenberg"],
-  ["rondebosch|ronde bosch", "Rondebosch"], ["goodwood|good wood", "Goodwood"], ["woodstock|wood stock", "Woodstock"],
-  ["milnerton|milner ton", "Milnerton"], ["athlone|athlon", "Athlone"], ["claremont|clare mont", "Claremont"],
-  ["mowbray|mow bray", "Mowbray"], ["wynberg|wineberg|wine berg|wynburg", "Wynberg"], ["parow|parrow|pa row", "Parow"],
-  ["paarl|pearl", "Paarl"], ["\\bstrand\\b", "Strand"],
-  ["cape town cbd|\\bcbd\\b|town centre|town center|city centre|city center|\\bin town\\b|\\bfor town\\b|cape town", "Cape Town CBD"]
+  ["mitchells? plain|mitchells?", "Mitchells Plain", "capetown"], ["kuils ?river|kuils", "Kuils River", "capetown"],
+  ["somerset west|somerset", "Somerset West", "capetown"], ["table ?view", "Table View", "capetown"], ["sea ?point", "Sea Point", "capetown"],
+  ["salt ?river", "Salt River", "capetown"], ["century city|century", "Century City", "capetown"], ["observatory|\\bobs\\b", "Observatory", "capetown"],
+  ["khayelitsha|khayelisha|kayelitsha", "Khayelitsha", "capetown"], ["stellenbosch|stellies", "Stellenbosch", "capetown"],
+  ["bellville|belville|bell ville", "Bellville", "capetown"], ["brackenfell|bracken fell", "Brackenfell", "capetown"],
+  ["durbanville|durban ville", "Durbanville", "capetown"], ["muizenberg|muisenberg", "Muizenberg", "capetown"],
+  ["rondebosch|ronde bosch", "Rondebosch", "capetown"], ["goodwood|good wood", "Goodwood", "capetown"], ["woodstock|wood stock", "Woodstock", "capetown"],
+  ["milnerton|milner ton", "Milnerton", "capetown"], ["athlone|athlon", "Athlone", "capetown"], ["claremont|clare mont", "Claremont", "capetown"],
+  ["mowbray|mow bray", "Mowbray", "capetown"], ["wynberg|wineberg|wine berg|wynburg", "Wynberg", "capetown"], ["parow|parrow|pa row", "Parow", "capetown"],
+  ["paarl|pearl", "Paarl", "capetown"], ["\\bstrand\\b", "Strand", "capetown"],
+  ["cape town cbd|cape town", "Cape Town CBD", "capetown"],
+  ["\\bcbd\\b|town centre|town center|city centre|city center|\\bin town\\b|\\bfor town\\b", "Cape Town CBD", "capetown", true],
+  // Lagos
+  ["victoria island|\\bv ?i\\b", "Victoria Island", "lagos"], ["lagos island|\\bisland\\b|\\bcms\\b|marina", "Lagos Island", "lagos"],
+  ["ikeja|ikeja gra|allen avenue|alausa", "Ikeja", "lagos"], ["lekki|chevron|jakande", "Lekki", "lagos"], ["\\bajah\\b|\\baja\\b|abraham adesanya", "Ajah", "lagos"],
+  ["sangotedo|sango tedo", "Sangotedo", "lagos"], ["ikoyi", "Ikoyi", "lagos"], ["surulere|suru lere|ojuelegba", "Surulere", "lagos"],
+  ["\\byaba\\b|sabo yaba|onike", "Yaba", "lagos"], ["ojota", "Ojota", "lagos"], ["\\bketu\\b|mile 12|mile twelve", "Ketu", "lagos"],
+  ["ojodu|berger", "Berger", "lagos"], ["oshodi", "Oshodi", "lagos"], ["maryland|mary land", "Maryland", "lagos"],
+  ["gbagada", "Gbagada", "lagos"], ["apapa", "Apapa", "lagos"], ["festac", "Festac", "lagos"],
+  ["mile ?2|mile two", "Mile 2", "lagos"], ["ikorodu", "Ikorodu", "lagos"], ["agege|pen cinema", "Agege", "lagos"],
+  ["\\bogba\\b", "Ogba", "lagos"], ["obalende", "Obalende", "lagos"], ["mushin|idi araba", "Mushin", "lagos"],
+  ["ikotun|egbeda", "Ikotun", "lagos"], ["iyana ipaja|ipaja|abule egba", "Iyana Ipaja", "lagos"],
+  // Abuja
+  ["wuse", "Wuse", "abuja"], ["garki|area 1\\b|area one", "Garki", "abuja"], ["maitama", "Maitama", "abuja"], ["asokoro", "Asokoro", "abuja"],
+  ["gwarinpa|gwarimpa", "Gwarinpa", "abuja"], ["kubwa", "Kubwa", "abuja"], ["lugbe", "Lugbe", "abuja"], ["\\bjabi\\b", "Jabi", "abuja"],
+  ["utako", "Utako", "abuja"], ["nyanya", "Nyanya", "abuja"], ["\\bkaru\\b|mararaba", "Karu", "abuja"], ["lokogoma", "Lokogoma", "abuja"],
+  ["central area|central business district|eagle square", "Central Area", "abuja"],
+  // Port Harcourt
+  ["rumuokoro", "Rumuokoro", "ph"], ["rumuola", "Rumuola", "ph"], ["rumuokwuta", "Rumuokwuta", "ph"], ["trans ?amadi", "Trans Amadi", "ph"],
+  ["choba", "Choba", "ph"], ["eleme|onne", "Eleme", "ph"], ["mile ?1\\b|mile one|diobu", "Mile 1", "ph"], ["mile ?3\\b|mile three", "Mile 3", "ph"],
+  ["\\bwoji\\b", "Woji", "ph"], ["oyigbo", "Oyigbo", "ph"], ["ada george", "Ada George", "ph"],
+  ["\\bgra\\b|old gra|new gra", "GRA", "ph", true]
 ];
 const ROAD_ALIASES = [
   ["\\bn ?1\\b|\\b(?:n|en) one\\b", "N1"], ["\\bn ?2\\b|\\b(?:n|en) two\\b|\\b(?:n|en) too\\b", "N2"],
@@ -310,10 +360,19 @@ const ROAD_ALIASES = [
   ["\\br ?300\\b|\\br three hundred\\b", "R300"], ["voortrekker|four trekker|for trekker|fortrekker", "Voortrekker Rd"],
   ["main road|main rd", "Main Rd"], ["durban road", "Durban Rd"], ["klipfontein|klip fontein", "Klipfontein Rd"],
   ["vanguard", "Vanguard Dr"], ["koeberg|cool berg", "Koeberg Rd"], ["strand street", "Strand St"],
-  ["settlers", "Settlers Way"], ["jan smuts|jan smut", "Jan Smuts Dr"], ["old paarl road|old pearl road", "Old Paarl Rd"]
+  ["settlers", "Settlers Way"], ["jan smuts|jan smut", "Jan Smuts Dr"], ["old paarl road|old pearl road", "Old Paarl Rd"],
+  // Nigeria
+  ["third mainland|3rd mainland|third main land", "Third Mainland Bridge"], ["lekki ?-? ?epe|lekki expressway", "Lekki-Epe Expressway"],
+  ["lagos ?-? ?ibadan|ibadan expressway", "Lagos-Ibadan Expressway"], ["apapa ?-? ?oshodi|oshodi ?-? ?apapa", "Apapa-Oshodi Expressway"],
+  ["ikorodu road", "Ikorodu Rd"], ["agege motor", "Agege Motor Rd"], ["herbert macaulay", "Herbert Macaulay Way"],
+  ["ozumba mbadiwe", "Ozumba Mbadiwe Ave"], ["admiralty", "Admiralty Way"], ["awolowo road", "Awolowo Rd"],
+  ["carter bridge", "Carter Bridge"], ["eko bridge", "Eko Bridge"], ["badagry expressway|badagry road", "Badagry Expressway"],
+  ["kubwa expressway|kubwa road", "Kubwa Expressway"], ["nyanya ?-? ?keffi|keffi road", "Nyanya-Keffi Rd"],
+  ["east ?-? ?west road", "East-West Rd"], ["aba road", "Aba Rd"], ["ikwerre road|ikwere road", "Ikwerre Rd"],
+  ["airport road", "Airport Rd"]
 ];
-const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police)|officers?|soldier|army)\b/;
-const GOSLOW_RX = /\b(go ?slow|go-slow|traffic|jam|hold ?up|holdup|accident|crash|standstill|stand still|no dey move|e no dey move|stuck|congestion)\b/;
+const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police|warden)|officers?|soldier|soldiers|army|lastma|last ma|frsc|f r s c|road safety|vio|v i o|mopol|mobile police|npf|customs|task force|patrol)\b/;
+const GOSLOW_RX = /\b(go ?slow|go-slow|traffic|jam|hold ?up|holdup|accident|crash|standstill|stand still|no dey move|e no dey move|stuck|congestion|gridlock|breakdown|broke down|broken down|tanker|trailer|flood|flooded|flooding)\b/;
 const YES_RX = /\b(yes|yeah|yah|yep|yup|ya|ja|sure|ok|okay|correct|na so|drop am|drop it|send|go ahead|do am|confirm|right|make we go|oya|let's go|lets go)\b/;
 const NO_RX = /\b(no|nope|cancel|wrong|comot|leave am|stop)\b/;
 const ASK_RX = /\b(wetin dey|wetin happen|any wahala|what'?s happening|what is happening|read|update|how road|how the road|how traffic|tell me)\b/;
@@ -325,12 +384,24 @@ function detectType(t) { t = norm(t); if (POLICE_RX.test(t)) return "police"; if
 function detectRoad(t) {
   t = norm(t);
   for (const [rx, name] of ROAD_ALIASES) { const m = t.match(new RegExp(rx)); if (m) return { road: name, rest: t.replace(m[0], " ") }; }
-  const lm = t.match(/\b(?:by|near|at|for|on|opposite|before|after)\s+(?:the\s+)?([a-z0-9' ]{2,40}?\b(?:road|street|drive|avenue|mall|garage|robot|robots|circle|bridge|station|shoprite|engen|shell|spar|pick n pay|checkers|taxi rank|rank|hospital|church|school))\b/);
+  const lm = t.match(/\b(?:by|near|at|for|on|opposite|before|after)\s+(?:the\s+)?([a-z0-9' ]{2,40}?\b(?:road|street|drive|avenue|way|expressway|mall|garage|robot|robots|circle|bridge|flyover|station|shoprite|engen|shell|spar|pick n pay|checkers|taxi rank|rank|hospital|church|mosque|school|junction|bus stop|roundabout|toll gate|tollgate|market|filling station|petrol station|plaza|gate|estate|park))\b/);
   if (lm) return { road: lm[1].trim().replace(/\b\w/g, c => c.toUpperCase()), rest: t.replace(lm[0], " ") };
   return { road: "", rest: t };
 }
-function detectArea(t) { t = norm(t); for (const [rx, name] of AREA_ALIASES) if (new RegExp(rx).test(t)) return name; return null; }
-function parseReport(text) { const type = detectType(text); const { road, rest } = detectRoad(text); return { type, road, area: detectArea(rest) }; }
+// Looks in the driver's own city first, then the other cities (skipping generic words like "town" or "GRA")
+function detectArea(t, city) {
+  t = norm(t);
+  for (const [rx, name, c] of AREA_ALIASES) if (c === city && new RegExp(rx).test(t)) return name;
+  for (const [rx, name, c, local] of AREA_ALIASES) if (c !== city && !local && new RegExp(rx).test(t)) return name;
+  if (!city) for (const [rx, name, c, local] of AREA_ALIASES) if (local && c === "capetown" && new RegExp(rx).test(t)) return name;
+  return null;
+}
+function parseReport(text, city) { const type = detectType(text); const { road, rest } = detectRoad(text); return { type, road, area: detectArea(rest, city) }; }
+function cityOf(p) {
+  if (!p) return null;
+  for (const [k, c] of Object.entries(CITIES)) if (hav(p, { lat: c.center[0], lng: c.center[1] }) < c.radius) return k;
+  return null;
+}
 function parseNav(text) { const m = norm(text).trim().match(NAV_RX); return m ? m[1].replace(/\b(please|abeg|now)\b/g, "").trim() : null; }
 // PARSER END
 
@@ -422,7 +493,16 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   const $ = (id) => document.getElementById(id);
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
   const DEVICE = ls.get("rg-device") || (() => { const id = "d" + Math.random().toString(36).slice(2) + Date.now().toString(36); ls.set("rg-device", id); return id; })();
-  const CT = { lat: -33.93, lng: 18.55 };
+  let curCity = ls.get("rg-city") || "capetown";
+  if (!CITIES[curCity]) curCity = "capetown";
+  const CT = { lat: CITIES[curCity].center[0], lng: CITIES[curCity].center[1] };
+  // Best name for a spot: nearby area, else the city, else what the map service calls the town
+  async function placeName(p) {
+    const a = nearestArea(p); if (a) return a;
+    const c = cityOf(p); if (c) return CITIES[c].name;
+    const info = await reverseInfo(p);
+    return (info.city || "Unknown area").slice(0, 60);
+  }
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); };
@@ -639,6 +719,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(Math.min(me.acc, 300)); }
     const dot = meMarker.getElement() && meMarker.getElement().querySelector(".me-dot");
     if (dot) { const moving = me.heading != null && (me.speed == null || me.speed > 1.5); dot.classList.toggle("moving", moving); if (moving) dot.querySelector(".arrow").style.transform = `rotate(${me.heading}deg)`; }
+    const nowCity = cityOf(me);
+    if (nowCity && nowCity !== curCity) { curCity = nowCity; ls.set("rg-city", nowCity); fillAreaSelect(); }
     if (firstFix) { firstFix = false; map.setView(ll, 15); }
     else if (follow) map.setView(ll, nav ? Math.max(map.getZoom(), 16) : map.getZoom(), { animate: true });
     guidance(); checkWarnings();
@@ -687,9 +769,14 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   $("warn-clear").onclick = () => { if (warnFor) vote(warnFor.id, "cleared"); $("warn").hidden = true; };
 
   /* ===== 7. Reporting (one tap) ===== */
-  $("r-area").innerHTML = '<option value="">Choose area</option>' + AREAS.map(a => `<option>${a}</option>`).join("");
+  function fillAreaSelect() {
+    const order = [curCity, ...Object.keys(CITIES).filter(k => k !== curCity)];
+    $("r-area").innerHTML = '<option value="">Choose area</option>' + order.map(k =>
+      `<optgroup label="${CITIES[k].name}">${Object.keys(CITY_AREAS[k]).map(a => `<option>${a}</option>`).join("")}</optgroup>`).join("");
+  }
+  fillAreaSelect();
   const roadCache = new Map();
-  async function reverseRoad(p) {
+  async function reverseInfo(p) {
     const key = p.lat.toFixed(4) + "," + p.lng.toFixed(4);
     if (roadCache.has(key)) return roadCache.get(key);
     try {
@@ -697,10 +784,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       const res = await fetch(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}&lang=en`, { signal: ctl.signal });
       clearTimeout(t);
       const j = await res.json(); const pr = (j.features && j.features[0] && j.features[0].properties) || {};
-      const road = (pr.street || pr.name || "").slice(0, 80);
-      roadCache.set(key, road); return road;
-    } catch { return ""; }
+      const info = { road: (pr.street || pr.name || "").slice(0, 80), city: pr.city || pr.district || pr.county || pr.state || "" };
+      roadCache.set(key, info); return info;
+    } catch { return { road: "", city: "" }; }
   }
+  const reverseRoad = async (p) => (await reverseInfo(p)).road;
   let reportPos = null;
   async function openReport() {
     openSheet("sheet-report");
@@ -712,7 +800,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       $("r-road").value = "";
       const road = await reverseRoad(reportPos);
       if (road && !$("r-road").value) $("r-road").value = road;
-      const a = nearestArea(reportPos);
+      const a = await placeName(reportPos);
       $("r-where").textContent = ""; const b = document.createElement("b"); b.textContent = [road, a].filter(Boolean).join(", ") || "Your location";
       $("r-where").append("📍 For where you dey now: ", b);
     } else {
@@ -724,7 +812,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   async function sendTyped(type) {
     let area, pos = reportPos;
-    if (pos) area = nearestArea(pos) || "Cape Town";
+    if (pos) area = await placeName(pos);
     else { area = $("r-area").value; if (!area) { toast("Abeg choose the area."); return; } const c = AREA_CENTERS[area]; pos = { lat: c[0], lng: c[1] }; }
     $("r-police").disabled = $("r-goslow").disabled = true;
     try {
@@ -765,8 +853,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   /* ===== 9. Search ===== */
   async function geocode(q) {
     const bias = me || CT;
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${bias.lat}&lon=${bias.lng}&limit=6&lang=en&bbox=17.6,-34.9,19.9,-33.0`;
-    const res = await fetch(url); const j = await res.json();
+    const city = (me && cityOf(me)) || (me ? null : curCity);
+    const base = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${bias.lat}&lon=${bias.lng}&limit=6&lang=en`;
+    let j = { features: [] };
+    if (city) { const r = await fetch(base + "&bbox=" + CITIES[city].bbox); j = await r.json(); }
+    if (!j.features || !j.features.length) { const r = await fetch(base); j = await r.json(); }  // nothing nearby: search everywhere, closest first
     return (j.features || []).map(f => {
       const p = f.properties || {};
       const title = p.name || [p.street, p.housenumber].filter(Boolean).join(" ") || p.city || q;
@@ -1109,7 +1200,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
       if (STOP_RX.test(norm(heard))) { if (nav) { endNav(true); await say("Okay, I don stop the directions."); } else await say("We no dey navigate now."); return; }
 
-      let { type, road, area } = parseReport(heard);
+      let { type, road, area } = parseReport(heard, curCity);
       const navQ = !type ? parseNav(heard) : null;
       if (navQ) {
         let list = []; try { list = await geocode(navQ); } catch {}
@@ -1129,11 +1220,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       // Use the phone's location unless the driver named a different area
       let pos = null;
       const here = fresh() ? nearestArea(me) : null;
-      if (fresh() && (!area || area === here)) { pos = { lat: me.lat, lng: me.lng }; area = here || area || "Cape Town"; if (!road) road = await reverseRoad(pos); }
+      if (fresh() && (!area || area === here)) { pos = { lat: me.lat, lng: me.lng }; area = area || await placeName(pos); if (!road) road = await reverseRoad(pos); }
       if (!pos) {
         if (!area) {
           await say([{ c: "which-area", t: "Which area?" }]);
-          const a = await listen(6000); area = a && detectArea(a);
+          const a = await listen(6000); area = a && detectArea(a, curCity);
           if (!road && a) road = detectRoad(a).road;
           if (!area) { await say("I no know that area. Tap again, or make passenger use the Report button."); return; }
         }
