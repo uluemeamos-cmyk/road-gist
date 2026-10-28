@@ -1,5 +1,5 @@
 // Road Clear offline helper: opens the app with no signal and keeps map areas you've seen.
-const VERSION = "rc-2026-10-28d";
+const VERSION = "rc-2026-10-28e";
 const SHELL_CACHE = "rc-shell-" + VERSION;
 const TILE_CACHE = "rc-tiles-v1";
 const MAX_TILES = 3000; // roughly 40–60 MB of map
@@ -57,7 +57,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith((async () => {
       try {
         const res = await fetch(req);
-        if (res.ok) { const c = await caches.open(SHELL_CACHE); c.put("./index.html", res.clone()); }
+        if (res.ok) { const c = await caches.open(SHELL_CACHE); const isApp = /\/$|index\.html$/.test(url.pathname); c.put(isApp ? "./index.html" : req, res.clone()); }
         return res;
       } catch {
         return (await caches.match(req, { ignoreSearch: true })) || (await caches.match("./index.html")) || new Response("Road Clear needs network the first time you open it.", { status: 503, headers: { "Content-Type": "text/plain" } });

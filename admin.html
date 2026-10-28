@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1f4f3e">
+<title>Road Clear Admin</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column for phone use. Emerald header, sign-in card, then today's numbers, filters and the report list. */
+:root {
+  --bg: #f2f3ef; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcdfd6;
+  --brand: #1f4f3e; --gold: #c99a3a; --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf;
+  --ok: #18794e; --ok-soft: #e1f3ea; --danger: #b42318; --danger-soft: #fde8e6;
+  --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121512; --surface: #1c201c; --ink: #eceee8; --muted: #a2a79c; --line: #323830;
+  --brand: #173d30; --gold: #e3b964; --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116;
+  --ok: #4fc58c; --ok-soft: #15301f; --danger: #f97066; --danger-soft: #3a1714; color-scheme: dark } }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+[hidden] { display: none !important; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+input, select { font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; width: 100%; }
+
+header { background: var(--brand); color: #fff; padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-bottom: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.head { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.head img { width: 44px; height: 44px; border-radius: 11px; }
+.head div { flex: 1; min-width: 0; }
+.head h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; }
+.head span { font-size: 13px; color: #cfe3d9; }
+.head button { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4); border-radius: 10px; padding: 8px 12px; font-weight: 600; font-size: 14px; }
+
+main { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; padding-block: 16px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.card h2 { margin: 0; font-family: var(--display); font-size: 20px; }
+label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+.btn { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; background: var(--brand); color: #fff; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn:disabled { opacity: .55; cursor: wait; }
+.msg { font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--ink); border-left: 4px solid var(--danger); }
+.msg.good { background: var(--ok-soft); border-left-color: var(--ok); }
+.small { font-size: 13px; color: var(--muted); }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 2px; }
+.stat b { font-family: var(--display); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+
+.filters { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.filters select { width: auto; padding: 8px 10px; font-size: 14px; }
+
+.list { display: grid; gap: 10px; }
+.rep { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.rep.police { --c: var(--police); --cs: var(--police-soft); } .rep.goslow { --c: var(--slow); --cs: var(--slow-soft); }
+.rep.gone { opacity: .62; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kind { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c); background: var(--cs); padding: 3px 8px; border-radius: 6px; }
+.status { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+.status.live { background: var(--ok-soft); color: var(--ok); } .status.done { background: var(--line); color: var(--muted); }
+.place { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+.meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.phone { font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.phone code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: 12px; }
+.flag { color: var(--danger); font-weight: 700; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.acts button { border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 700; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.acts .del { color: var(--danger); border-color: var(--danger); background: transparent; }
+.acts .blk { background: var(--danger); color: #fff; border-color: var(--danger); }
+.acts a { font-size: 14px; font-weight: 600; color: var(--police); align-self: center; }
+.confirm { display: grid; gap: 8px; background: var(--danger-soft); border-radius: 10px; padding: 10px; font-size: 14px; }
+.confirm label { display: flex; gap: 8px; align-items: center; font-weight: 500; }
+.confirm input { width: auto; }
+.empty { text-align: center; padding: 24px 12px; border: 2px dashed var(--line); border-radius: 14px; color: var(--muted); }
+.blocked-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.blocked-row:last-child { border-bottom: 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 10; max-width: calc(100% - 32px); }
+@media (max-width: 420px) { .stat b { font-size: 24px; } .filters { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <img src="apple-touch-icon.png" alt="">
+    <div><h1>Road Clear Admin</h1><span id="who">Private: only for the app owner</span></div>
+    <button type="button" id="signout" hidden>Sign out</button>
+  </div>
+</header>
+
+<main>
+  <form class="card" id="login">
+    <h2>Sign in</h2>
+    <p class="small" style="margin:0">Use the email and password you created in Supabase under Authentication → Users.</p>
+    <label for="email">Email<input id="email" type="email" autocomplete="username" required></label>
+    <label for="pass">Password<input id="pass" type="password" autocomplete="current-password" required></label>
+    <div id="login-msg" class="msg" hidden></div>
+    <button class="btn" id="login-btn" type="submit">Sign in</button>
+  </form>
+
+  <section id="app" hidden style="display:grid;gap:16px">
+    <div class="stats">
+      <div class="stat"><b id="s-live">0</b><span>Showing on the map now</span></div>
+      <div class="stat"><b id="s-today">0</b><span>Reports today</span></div>
+      <div class="stat"><b id="s-phones">0</b><span>Phones reporting today</span></div>
+    </div>
+
+    <div class="card">
+      <div class="filters">
+        <div class="chips" role="group" aria-label="Filter">
+          <button class="chip" data-f="all" aria-pressed="true" type="button">All</button>
+          <button class="chip" data-f="live" aria-pressed="false" type="button">On map now</button>
+          <button class="chip" data-f="police" aria-pressed="false" type="button">Police</button>
+          <button class="chip" data-f="goslow" aria-pressed="false" type="button">Go-slow</button>
+          <button class="chip" data-f="busy" aria-pressed="false" type="button">Busy phones</button>
+        </div>
+        <select id="days" aria-label="How far back">
+          <option value="1">Last 24 hours</option>
+          <option value="7" selected>Last 7 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </div>
+      <input id="q" type="search" placeholder="Search area, road or note" aria-label="Search">
+      <div class="row"><span class="small" id="count"></span><button class="btn ghost" id="refresh" type="button">Refresh</button></div>
+    </div>
+
+    <div class="list" id="list"></div>
+
+    <div class="card">
+      <h2>Blocked phones</h2>
+      <p class="small" style="margin:0">Blocked phones can still see the map, but can't send reports or confirmations.</p>
+      <div id="blocked"></div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+<script>
+const CONFIG = {
+  SUPABASE_URL: "https://iqniyhsnzsxehjzsllvl.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ"
+};
+(() => {
+  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3 };
+  const $ = (id) => document.getElementById(id);
+  const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); };
+  let reports = [], blocked = new Set(), filter = "all", openConfirm = null;
+
+  /* ---- Sign in ---- */
+  async function enter() {
+    const { data } = await sb.auth.getSession();
+    if (!data.session) { $("login").hidden = false; $("app").hidden = true; $("signout").hidden = true; return; }
+    const { data: ok } = await sb.rpc("is_admin");
+    if (!ok) {
+      $("login").hidden = false; $("app").hidden = true;
+      showLoginMsg("This account is not on the admin list. Check the email in protection.sql, run it again, then sign in.");
+      await sb.auth.signOut(); return;
+    }
+    $("who").textContent = data.session.user.email;
+    $("login").hidden = true; $("app").hidden = false; $("signout").hidden = false;
+    load();
+  }
+  function showLoginMsg(m) { $("login-msg").textContent = m; $("login-msg").hidden = !m; }
+  $("login").addEventListener("submit", async (e) => {
+    e.preventDefault(); showLoginMsg(""); $("login-btn").disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("pass").value });
+    $("login-btn").disabled = false;
+    if (error) { showLoginMsg(/invalid/i.test(error.message) ? "Wrong email or password." : error.message); return; }
+    $("pass").value = ""; enter();
+  });
+  $("signout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+  /* ---- Data ---- */
+  async function load() {
+    $("refresh").disabled = true;
+    const since = new Date(Date.now() - (+$("days").value) * 86400e3).toISOString();
+    const { data: reps, error } = await sb.from("reports").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(1000);
+    if (error) { toast("Could not load reports: " + error.message); $("refresh").disabled = false; return; }
+    const ids = reps.map(r => r.id); let cons = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data } = await sb.from("confirmations").select("report_id,kind,device_id,created_at").in("report_id", ids.slice(i, i + 200));
+      cons = cons.concat(data || []);
+    }
+    const { data: bl } = await sb.from("blocked_devices").select("*").order("created_at", { ascending: false });
+    blocked = new Set((bl || []).map(b => b.device_id));
+    reports = reps.map(r => ({ ...r, t: Date.parse(r.created_at), still: {}, cleared: {} }));
+    const byId = Object.fromEntries(reports.map(r => [r.id, r]));
+    for (const c of cons) { const r = byId[c.report_id]; if (r) r[c.kind][c.device_id] = Math.max(r[c.kind][c.device_id] || 0, Date.parse(c.created_at)); }
+    render(); renderBlocked(bl || []);
+    $("refresh").disabled = false;
+  }
+  const lastSeen = (r) => Math.max(r.t, ...Object.values(r.still));
+  function isLive(r) {
+    const seen = lastSeen(r);
+    if (Date.now() - seen > (TTL[r.type] || 0)) return false;
+    const clears = Object.entries(r.cleared).filter(([, n]) => n > seen);
+    if (clears.some(([d]) => d === r.device_id)) return false;
+    return clears.length < 2;
+  }
+  function ago(ms) {
+    const m = Math.floor((Date.now() - ms) / 60e3);
+    if (m < 1) return "just now"; if (m < 60) return m + " min ago";
+    const h = Math.floor(m / 60); if (h < 24) return h + " h ago";
+    return Math.floor(h / 24) + " d ago";
+  }
+  const shortId = (d) => (d || "unknown").slice(-6).toUpperCase();
+
+  /* ---- Render ---- */
+  function render() {
+    const dayAgo = Date.now() - 86400e3;
+    const today = reports.filter(r => r.t > dayAgo);
+    $("s-live").textContent = reports.filter(isLive).length;
+    $("s-today").textContent = today.length;
+    $("s-phones").textContent = new Set(today.map(r => r.device_id)).size;
+    const perPhone = {}; for (const r of reports) perPhone[r.device_id] = (perPhone[r.device_id] || 0) + 1;
+    const q = $("q").value.trim().toLowerCase();
+    let list = reports.filter(r => {
+      if (filter === "live" && !isLive(r)) return false;
+      if ((filter === "police" || filter === "goslow") && r.type !== filter) return false;
+      if (filter === "busy" && perPhone[r.device_id] < 5) return false;
+      if (q && ![r.area, r.road, r.note].join(" ").toLowerCase().includes(q)) return false;
+      return true;
+    });
+    if (filter === "busy") list.sort((a, b) => (perPhone[b.device_id] - perPhone[a.device_id]) || (b.t - a.t));
+    $("count").textContent = `${list.length} report${list.length === 1 ? "" : "s"}`;
+    const box = $("list"); box.replaceChildren();
+    if (!list.length) { box.innerHTML = '<div class="empty">No reports here.</div>'; return; }
+    for (const r of list) box.append(card(r, perPhone[r.device_id]));
+  }
+  function card(r, n) {
+    const live = isLive(r);
+    const el = document.createElement("article"); el.className = `rep ${r.type}${live ? "" : " gone"}`;
+    el.innerHTML = `<div class="row"><span class="kind"></span><span class="status"></span></div>
+      <h3 class="place"></h3>
+      <div class="meta"></div>
+      <div class="phone"></div>
+      <div class="acts"></div>`;
+    el.querySelector(".kind").textContent = r.type === "police" ? "Police roadblock" : "Go-slow";
+    const st = el.querySelector(".status"); st.className = "status " + (live ? "live" : "done"); st.textContent = live ? "On map" : "Expired or cleared";
+    el.querySelector(".place").textContent = [r.road, r.area].filter(Boolean).join(", ") || "No place given";
+    const when = new Date(r.t).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    el.querySelector(".meta").textContent = [`${when} (${ago(r.t)})`, `E still dey ${Object.keys(r.still).length}`, `E don clear ${Object.keys(r.cleared).length}`, r.note && r.note !== "Reported by voice" ? `“${r.note}”` : (r.note ? "by voice" : "")].filter(Boolean).join(" · ");
+    const ph = el.querySelector(".phone");
+    const code = document.createElement("code"); code.textContent = "Phone " + shortId(r.device_id);
+    const cnt = document.createElement("span"); cnt.textContent = `${n} report${n === 1 ? "" : "s"} in this period`; if (n >= 5) cnt.className = "flag";
+    ph.append(code, cnt);
+    if (blocked.has(r.device_id)) { const b = document.createElement("span"); b.className = "flag"; b.textContent = "Blocked"; ph.append(b); }
+    const acts = el.querySelector(".acts");
+    const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
+    del.onclick = () => askDelete(el, r);
+    acts.append(del);
+    if (!blocked.has(r.device_id) && r.device_id) {
+      const blk = document.createElement("button"); blk.type = "button"; blk.className = "blk"; blk.textContent = "Block phone";
+      blk.onclick = () => askBlock(el, r, n); acts.append(blk);
+    }
+    if (r.lat != null) { const a = document.createElement("a"); a.href = `https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}`; a.target = "_blank"; a.rel = "noopener"; a.textContent = "See on map"; acts.append(a); }
+    return el;
+  }
+  function closeConfirm() { if (openConfirm) { openConfirm.remove(); openConfirm = null; } }
+  function askDelete(el, r) {
+    closeConfirm();
+    const c = document.createElement("div"); c.className = "confirm";
+    c.innerHTML = `<span>Delete this report for everyone? This can't be undone.</span><div class="acts"><button type="button" class="blk">Yes, delete</button><button type="button">Cancel</button></div>`;
+    const [yes, no] = c.querySelectorAll("button");
+    no.onclick = closeConfirm;
+    yes.onclick = async () => {
+      yes.disabled = true;
+      const { error } = await sb.from("reports").delete().eq("id", r.id);
+      if (error) { toast("Could not delete: " + error.message); yes.disabled = false; return; }
+      reports = reports.filter(x => x.id !== r.id); closeConfirm(); render(); toast("Report deleted.");
+    };
+    el.append(c); openConfirm = c;
+  }
+  function askBlock(el, r, n) {
+    closeConfirm();
+    const c = document.createElement("div"); c.className = "confirm";
+    c.innerHTML = `<span>Block phone <b></b>? It won't be able to send reports or confirmations.</span>
+      <label><input type="checkbox" checked> Also delete its ${n} report${n === 1 ? "" : "s"}</label>
+      <div class="acts"><button type="button" class="blk">Block phone</button><button type="button">Cancel</button></div>`;
+    c.querySelector("b").textContent = shortId(r.device_id);
+    const box = c.querySelector("input"), [yes, no] = c.querySelectorAll(".acts button");
+    no.onclick = closeConfirm;
+    yes.onclick = async () => {
+      yes.disabled = true;
+      const { error } = await sb.from("blocked_devices").upsert({ device_id: r.device_id, reason: "Blocked from admin page" });
+      if (error) { toast("Could not block: " + error.message); yes.disabled = false; return; }
+      if (box.checked) {
+        const { error: e2 } = await sb.from("reports").delete().eq("device_id", r.device_id);
+        if (e2) toast("Blocked, but could not delete its reports: " + e2.message);
+      }
+      closeConfirm(); toast("Phone blocked."); load();
+    };
+    el.append(c); openConfirm = c;
+  }
+  function renderBlocked(bl) {
+    const box = $("blocked"); box.replaceChildren();
+    if (!bl.length) { box.innerHTML = '<p class="small" style="margin:0">No blocked phones.</p>'; return; }
+    for (const b of bl) {
+      const row = document.createElement("div"); row.className = "blocked-row";
+      const s = document.createElement("span"); s.textContent = `Phone ${shortId(b.device_id)} · since ${new Date(b.created_at).toLocaleDateString()}`;
+      const u = document.createElement("button"); u.type = "button"; u.className = "btn ghost"; u.textContent = "Unblock";
+      u.onclick = async () => {
+        u.disabled = true;
+        const { error } = await sb.from("blocked_devices").delete().eq("device_id", b.device_id);
+        if (error) { toast("Could not unblock: " + error.message); u.disabled = false; return; }
+        toast("Phone unblocked."); load();
+      };
+      row.append(s, u); box.append(row);
+    }
+  }
+
+  /* ---- Controls ---- */
+  document.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+    filter = c.dataset.f; document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c))); render();
+  });
+  $("q").addEventListener("input", render);
+  $("days").onchange = load;
+  $("refresh").onclick = load;
+  setInterval(() => { if (!$("app").hidden && !openConfirm) load(); }, 60e3);
+  enter();
+})();
+</script>
+</body>
+</html>

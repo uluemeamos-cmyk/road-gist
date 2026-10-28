@@ -541,6 +541,14 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   function queuedAsReports() {
     return queue().filter(i => i.kind === "report").map(i => ({ id: i.qid, ...i.data, by: DEVICE, createdAt: i.t, still: { [DEVICE]: i.t }, cleared: {}, pending: true }));
   }
+  const errText = (e) => String((e && (e.message || e.details || e.hint)) || "");
+  // Messages for limits set in the database (see protection.sql)
+  function rcMessage(e) {
+    const m = errText(e);
+    if (/RC_BLOCKED/.test(m)) return "Road Clear don stop reports from this phone. If na mistake, contact the person wey share the app with you.";
+    if (/RC_LIMIT/.test(m)) return "You don send plenty reports for this hour. Abeg wait small, then try again.";
+    return "E no go. Check your network and try again.";
+  }
   const isNetErr = (e) => !navigator.onLine || /fetch|network|load failed|timed? ?out|connection/i.test((e && (e.message || e.details)) || "");
   let offlineShown = false;
   function netStatus(failed) {
@@ -647,7 +655,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (!TTL[r.type]) return false;
     const seen = lastSeen(r);
     if (Date.now() - seen > TTL[r.type]) return false;
-    return Object.values(r.cleared || {}).filter(n => n > seen).length < 2;
+    // Gone if two people say "E don clear", or the person who reported it says so
+    const clears = Object.entries(r.cleared || {}).filter(([, n]) => n > seen);
+    if (clears.some(([dev]) => dev === r.by)) return false;
+    return clears.length < 2;
   }
   const label = (t) => t === "police" ? "Police roadblock" : "Go-slow";
   const posOf = (r) => r.lat != null ? { lat: r.lat, lng: r.lng } : (AREA_CENTERS[r.area] ? { lat: AREA_CENTERS[r.area][0], lng: AREA_CENTERS[r.area][1] } : null);
@@ -657,7 +668,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const k = `rg-v-${id}-${kind}`, last = +(ls.get(k) || 0);
     if (Date.now() - last < 10 * 60e3) { toast("You don already mark am. Thank you!"); return; }
     try { const res = await store.confirm(id, kind); ls.set(k, String(Date.now())); toast(res && res.queued ? "No network. I go send am when network come back." : kind === "still" ? "We don mark am say e still dey." : "We don mark am say e don clear."); }
-    catch { toast("E no go. Try again."); }
+    catch (e) { toast(rcMessage(e)); }
   }
 
   /* ===== 4. Map ===== */
@@ -831,7 +842,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try {
       const res = await store.add({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
       ls.set("rg-myarea", area); closeSheets(); toast(res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
-    } catch { toast("E no go. Check your network and try again."); }
+    } catch (e) { toast(rcMessage(e)); }
     finally { $("r-police").disabled = $("r-goslow").disabled = false; }
   }
   $("btn-report").onclick = openReport;
@@ -1251,7 +1262,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
           if (res && res.queued) await say("Network no dey now. I don keep am, I go send am when network come back. Drive safe.");
           else await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]);
         }
-        catch { await say([{ c: "network-error", t: "E no go. Network get wahala. Try again small time." }]); }
+        catch (e) { if (/RC_/.test(errText(e))) await say(rcMessage(e)); else await say([{ c: "network-error", t: "E no go. Network get wahala. Try again small time." }]); }
       } else if (ok === false) await say([{ c: "not-dropped", t: "Okay, I no drop am." }]);
       else await say("I no hear yes, so I no drop am.");
     } finally {
