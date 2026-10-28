@@ -442,19 +442,35 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const save = (rows) => { try { localStorage.setItem("rg-local", JSON.stringify(rows.slice(0, 300))); } catch {} };
     return {
       async refresh() { reports = load(); emit(); },
-      async add(r) { const rows = load(); rows.unshift({ id: "l" + Date.now(), ...r, createdAt: Date.now(), by: DEVICE, still: { [DEVICE]: Date.now() }, cleared: {} }); save(rows); await this.refresh(); },
+      async add(r) { const rows = load(); rows.unshift({ id: "l" + Date.now(), ...r, createdAt: Date.now(), by: DEVICE, still: { [DEVICE]: Date.now() }, cleared: {} }); save(rows); await this.refresh(); return { queued: false }; },
       async confirm(id, kind) { const rows = load(); const r = rows.find(x => x.id === id); if (r) { r[kind] = r[kind] || {}; r[kind][DEVICE] = Date.now(); save(rows); } await this.refresh(); },
       start() { this.refresh(); }
     };
   }
+  /* Offline helpers */
+  const queue = () => { try { return JSON.parse(localStorage.getItem("rg-queue") || "[]"); } catch { return []; } };
+  const setQueue = (q) => { try { localStorage.setItem("rg-queue", JSON.stringify(q.slice(-50))); } catch {} };
+  function enqueue(item) { setQueue(queue().concat({ ...item, qid: "q" + Date.now() + Math.random().toString(36).slice(2, 6), t: Date.now() })); if (item.kind === "report") { reports.push(...queuedAsReports().slice(-1)); emit(); } }
+  function queuedAsReports() {
+    return queue().filter(i => i.kind === "report").map(i => ({ id: i.qid, ...i.data, by: DEVICE, createdAt: i.t, still: { [DEVICE]: i.t }, cleared: {}, pending: true }));
+  }
+  const isNetErr = (e) => !navigator.onLine || /fetch|network|load failed|timed? ?out|connection/i.test((e && (e.message || e.details)) || "");
+  let offlineShown = false;
+  function netStatus(failed) {
+    const off = !navigator.onLine || failed === true;
+    if (off && !offlineShown) { offlineShown = true; notice("No network. You dey see the last reports wey I get. Any report you drop go send when network come back."); }
+    else if (!off && offlineShown) { offlineShown = false; notice(""); }
+  }
+
   function makeSupabaseStore() {
     const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
     let noCoords = false;
     return {
       async refresh() {
         const since = new Date(Date.now() - 6 * 3600e3).toISOString();
+        if (!navigator.onLine) { netStatus(); return; }
         const { data: reps, error } = await sb.from("reports").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
-        if (error) { toast("Network wahala. We go try again."); return; }
+        if (error) { netStatus(true); return; }
         const ids = reps.map(r => r.id);
         let cons = [];
         if (ids.length) { const res = await sb.from("confirmations").select("report_id,kind,device_id,created_at").in("report_id", ids); cons = res.data || []; }
@@ -463,23 +479,63 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
           createdAt: Date.parse(r.created_at), still: {}, cleared: {} }));
         const byId = Object.fromEntries(reports.map(r => [r.id, r]));
         for (const c of cons) { const r = byId[c.report_id]; if (!r) continue; r[c.kind][c.device_id] = Math.max(r[c.kind][c.device_id] || 0, Date.parse(c.created_at)); }
+        reports.push(...queuedAsReports());
+        try { localStorage.setItem("rg-reports-cache", JSON.stringify(reports.filter(r => !String(r.id).startsWith("q")))); } catch {}
+        netStatus(false);
         emit();
+        if (queue().length && !this._flushing && Date.now() - (this._lastFlush || 0) > 30000) this.flush();
       },
-      async add(r) {
+      // Reports and confirmations made without network wait here and are sent when the signal comes back
+      async flush() {
+        if (this._flushing || !navigator.onLine) return;
+        this._flushing = true; this._lastFlush = Date.now();
+        const had = queue().length; let sent = 0;
+        try {
+          for (const item of queue()) {
+            try {
+              if (item.kind === "report") await this.add(item.data, true);
+              else await this.confirm(item.id, item.vote, true);
+              setQueue(queue().filter(x => x.qid !== item.qid)); sent++;
+            } catch (e) {
+              if (isNetErr(e)) break;                       // still no signal: try again later
+              setQueue(queue().filter(x => x.qid !== item.qid)); // rejected by the database: drop it
+            }
+          }
+          if (had && sent) toast(sent === 1 ? "Network don come back. I don send your saved report." : `Network don come back. I don send ${sent} saved reports.`);
+        } finally { this._flushing = false; }
+        await this.refresh();
+      },
+      async add(r, fromQueue) {
+        if (!fromQueue && !navigator.onLine) { enqueue({ kind: "report", data: r }); return { queued: true }; }
         const row = { type: r.type, area: r.area, road: r.road, dir: r.dir || "", note: r.note, device_id: DEVICE };
         if (!noCoords && r.lat != null) { row.lat = r.lat; row.lng = r.lng; }
-        let { error } = await sb.from("reports").insert(row);
+        let error;
+        try { ({ error } = await sb.from("reports").insert(row)); } catch (e) { error = { message: "network " + e }; }
         if (error && /lat|lng|column/i.test(error.message || "")) {
           noCoords = true; delete row.lat; delete row.lng;
           notice("Map pins need one database update. See the README (step: run update.sql).");
           ({ error } = await sb.from("reports").insert(row));
         }
+        if (error && !fromQueue && isNetErr(error)) { enqueue({ kind: "report", data: r }); return { queued: true }; }
         if (error) throw error;
-        await this.refresh();
+        if (!fromQueue) await this.refresh();
+        return { queued: false };
       },
-      async confirm(id, kind) { const { error } = await sb.from("confirmations").insert({ report_id: id, kind, device_id: DEVICE }); if (error) throw error; await this.refresh(); },
+      async confirm(id, kind, fromQueue) {
+        if (String(id).startsWith("q")) return { queued: true };
+        if (!fromQueue && !navigator.onLine) { enqueue({ kind: "vote", id, vote: kind }); return { queued: true }; }
+        let error;
+        try { ({ error } = await sb.from("confirmations").insert({ report_id: id, kind, device_id: DEVICE })); } catch (e) { error = { message: "network " + e }; }
+        if (error && !fromQueue && isNetErr(error)) { enqueue({ kind: "vote", id, vote: kind }); return { queued: true }; }
+        if (error) throw error;
+        if (!fromQueue) await this.refresh();
+        return { queued: false };
+      },
       start() {
+        try { const c = JSON.parse(localStorage.getItem("rg-reports-cache") || "[]"); if (c.length) { reports = c.concat(queuedAsReports()); emit(); } } catch {}
         this.refresh();
+        window.addEventListener("online", () => this.flush());
+        window.addEventListener("offline", () => netStatus());
         let t; const soon = () => { clearTimeout(t); t = setTimeout(() => this.refresh(), 400); };
         sb.channel("road-clear")
           .on("postgres_changes", { event: "INSERT", schema: "public", table: "reports" }, soon)
@@ -513,14 +569,14 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   async function vote(id, kind) {
     const k = `rg-v-${id}-${kind}`, last = +(ls.get(k) || 0);
     if (Date.now() - last < 10 * 60e3) { toast("You don already mark am. Thank you!"); return; }
-    try { await store.confirm(id, kind); ls.set(k, String(Date.now())); toast(kind === "still" ? "We don mark am say e still dey." : "We don mark am say e don clear."); }
+    try { const res = await store.confirm(id, kind); ls.set(k, String(Date.now())); toast(res && res.queued ? "No network. I go send am when network come back." : kind === "still" ? "We don mark am say e still dey." : "We don mark am say e don clear."); }
     catch { toast("E no go. Try again."); }
   }
 
   /* ===== 4. Map ===== */
   const map = L.map("map", { zoomControl: false, attributionControl: true }).setView([CT.lat, CT.lng], 11);
   map.attributionControl.setPrefix(false);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" }).addTo(map);
 
   const SHIELD = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>';
   const BARS = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>';
@@ -672,8 +728,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     else { area = $("r-area").value; if (!area) { toast("Abeg choose the area."); return; } const c = AREA_CENTERS[area]; pos = { lat: c[0], lng: c[1] }; }
     $("r-police").disabled = $("r-goslow").disabled = true;
     try {
-      await store.add({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
-      ls.set("rg-myarea", area); closeSheets(); toast("You don drop am. Thank you!");
+      const res = await store.add({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
+      ls.set("rg-myarea", area); closeSheets(); toast(res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
     } catch { toast("E no go. Check your network and try again."); }
     finally { $("r-police").disabled = $("r-goslow").disabled = false; }
   }
@@ -895,23 +951,41 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const base = `https://api.github.com/repos/${location.hostname.split(".")[0]}/${location.pathname.split("/").filter(Boolean)[0] || ""}/contents/`;
     const cacheKey = "rg-voice-list";
     let files = null;
-    try { const c = JSON.parse(ls.get(cacheKey) || "null"); if (c && Date.now() - c.t < 3600e3) files = c.files; } catch {}
+    let stale = null;
+    try { const c = JSON.parse(ls.get(cacheKey) || "null"); if (c) { stale = c.files; if (Date.now() - c.t < 3600e3) files = c.files; } } catch {}
     if (!files && /github\.io$/.test(location.hostname)) {
       files = [];
       for (const dir of ["voice", ""]) {
         try {
           const res = await fetch(base + dir); if (!res.ok) continue;
           const list = await res.json();
-          files.push(...list.filter(f => f.type === "file" && /\.(m4a|mp3|wav|aac|caf|mp4|ogg)$/i.test(f.name)).map(f => f.path));
+          files.push(...list.filter(f => f.type === "file" && /\.(m4a|mp3|wav|aac|caf|mp4|ogg)$/i.test(f.name)).map(f => ({ path: f.path, sha: f.sha })));
           if (files.length) break;
         } catch {}
       }
       if (files.length) ls.set(cacheKey, JSON.stringify({ t: Date.now(), files }));
+      else if (stale) files = stale;
     }
-    for (const path of files || []) {
-      const name = path.split("/").pop(), n = vnorm(name);
+    const clipVer = {};
+    for (const f of files || []) {
+      const path = typeof f === "string" ? f : f.path, sha = typeof f === "string" ? "" : (f.sha || "");
+      const n = vnorm(path.split("/").pop());
       const key = VOICE_KEYS.find(k => vnorm(k) === n);
-      if (key && !clipUrl[key]) clipUrl[key] = path.split("/").map(encodeURIComponent).join("/");
+      if (key && !clipUrl[key]) { clipUrl[key] = path.split("/").map(encodeURIComponent).join("/"); clipVer[key] = sha.slice(0, 10); }
+    }
+    keepClipsOffline(clipVer);
+  }
+  // Save each clip on the phone so your voice still plays with no network
+  async function keepClipsOffline(ver) {
+    if (!("caches" in window)) return;
+    let cache; try { cache = await caches.open("rc-voice-v1"); } catch { return; }
+    for (const key of Object.keys(clipUrl)) {
+      const url = clipUrl[key], ck = url + "?v=" + (ver[key] || "0");
+      try {
+        let res = await cache.match(ck);
+        if (!res) { res = await fetch(url); if (!res.ok) continue; await cache.put(ck, res.clone()); }
+        clipUrl[key] = URL.createObjectURL(await res.blob());
+      } catch {}
     }
   }
   const hasClip = (k) => !!clipUrl[k];
@@ -1068,7 +1142,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       const summary = `${label(type)} for ${road ? road + ", " : ""}${area}`;
       const ok = await askYesNo("Drop this report?", summary, [`You talk say ${summary}.`, { c: "confirm", t: "Make I drop am? Talk yes or no." }]);
       if (ok) {
-        try { await store.add({ type, area, road, note: "Reported by voice", lat: pos ? pos.lat : null, lng: pos ? pos.lng : null }); ls.set("rg-myarea", area); await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]); }
+        try {
+          const res = await store.add({ type, area, road, note: "Reported by voice", lat: pos ? pos.lat : null, lng: pos ? pos.lng : null }); ls.set("rg-myarea", area);
+          if (res && res.queued) await say("Network no dey now. I don keep am, I go send am when network come back. Drive safe.");
+          else await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]);
+        }
         catch { await say([{ c: "network-error", t: "E no go. Network get wahala. Try again small time." }]); }
       } else if (ok === false) await say([{ c: "not-dropped", t: "Okay, I no drop am." }]);
       else await say("I no hear yes, so I no drop am.");
@@ -1091,6 +1169,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
 
   /* ===== 13. Start ===== */
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   store.start();
   startGps();
   loadClips();
