@@ -14,7 +14,7 @@
 /* Layout: one column for phone use. Emerald header, sign-in card, then today's numbers, filters and the report list. */
 :root {
   --bg: #f2f3ef; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcdfd6;
-  --brand: #1f4f3e; --gold: #c99a3a; --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf;
+  --brand: #1f4f3e; --gold: #c99a3a; --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
   --ok: #18794e; --ok-soft: #e1f3ea; --danger: #b42318; --danger-soft: #fde8e6;
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -22,7 +22,7 @@
 }
 @media (prefers-color-scheme: dark) { :root {
   --bg: #121512; --surface: #1c201c; --ink: #eceee8; --muted: #a2a79c; --line: #323830;
-  --brand: #173d30; --gold: #e3b964; --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116;
+  --brand: #173d30; --gold: #e3b964; --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116; --cam: #c4a1f5; --cam-soft: #2c2140;
   --ok: #4fc58c; --ok-soft: #15301f; --danger: #f97066; --danger-soft: #3a1714; color-scheme: dark } }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -67,7 +67,7 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
 
 .list { display: grid; gap: 10px; }
 .rep { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
-.rep.police { --c: var(--police); --cs: var(--police-soft); } .rep.goslow { --c: var(--slow); --cs: var(--slow-soft); }
+.rep.police { --c: var(--police); --cs: var(--police-soft); } .rep.goslow { --c: var(--slow); --cs: var(--slow-soft); } .rep.camera { --c: var(--cam); --cs: var(--cam-soft); }
 .rep.gone { opacity: .62; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kind { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c); background: var(--cs); padding: 3px 8px; border-radius: 6px; }
@@ -149,6 +149,7 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
           <button class="chip" data-f="live" aria-pressed="false" type="button">On map now</button>
           <button class="chip" data-f="police" aria-pressed="false" type="button">Police</button>
           <button class="chip" data-f="goslow" aria-pressed="false" type="button">Go-slow</button>
+          <button class="chip" data-f="camera" aria-pressed="false" type="button">Cameras</button>
           <button class="chip" data-f="busy" aria-pressed="false" type="button">Busy phones</button>
         </div>
         <select id="days" aria-label="How far back">
@@ -179,7 +180,7 @@ const CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ"
 };
 (() => {
-  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3 };
+  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3 };
   const $ = (id) => document.getElementById(id);
   const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const toast = (m) => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); };
@@ -269,7 +270,7 @@ const CONFIG = {
     const q = $("q").value.trim().toLowerCase();
     let list = reports.filter(r => {
       if (filter === "live" && !isLive(r)) return false;
-      if ((filter === "police" || filter === "goslow") && r.type !== filter) return false;
+      if ((filter === "police" || filter === "goslow" || filter === "camera") && r.type !== filter) return false;
       if (filter === "busy" && perPhone[r.device_id] < 5) return false;
       if (q && ![r.area, r.road, r.note].join(" ").toLowerCase().includes(q)) return false;
       return true;
@@ -288,7 +289,7 @@ const CONFIG = {
       <div class="meta"></div>
       <div class="phone"></div>
       <div class="acts"></div>`;
-    el.querySelector(".kind").textContent = r.type === "police" ? "Police roadblock" : "Go-slow";
+    el.querySelector(".kind").textContent = r.type === "police" ? "Police roadblock" : r.type === "camera" ? "Speed camera" : "Go-slow";
     const st = el.querySelector(".status"); st.className = "status " + (live ? "live" : "done"); st.textContent = live ? "On map" : "Expired or cleared";
     el.querySelector(".place").textContent = [r.road, r.area].filter(Boolean).join(", ") || "No place given";
     const when = new Date(r.t).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });

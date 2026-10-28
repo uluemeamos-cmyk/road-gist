@@ -20,7 +20,7 @@
 /* Layout: full-screen map. Search or turn banner floats on top, warning card under it, control bar pinned to the bottom. */
 :root {
   --bg: #f3f1ec; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcd8cf;
-  --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf;
+  --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
   --sign: #f5b301; --ok: #18794e; --ok-soft: #e1f3ea; --route: #2f7cf6; --on-color: #ffffff;
   --shadow: 0 6px 24px rgba(0,0,0,.18);
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
@@ -29,7 +29,7 @@
 }
 @media (prefers-color-scheme: dark) { :root {
   --bg: #141613; --surface: #1e211d; --ink: #eceee8; --muted: #a2a79c; --line: #33372f;
-  --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116;
+  --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116; --cam: #c4a1f5; --cam-soft: #2c2140;
   --ok: #4fc58c; --ok-soft: #15301f; --route: #5c9bff; --on-color: #111; --shadow: 0 6px 24px rgba(0,0,0,.5); color-scheme: dark }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.9) saturate(.6); }
   .leaflet-container { background: #1a1c19; }
@@ -78,6 +78,7 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 /* Warning card */
 .warn { display: grid; gap: 10px; background: var(--surface); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); border-left: 8px solid var(--c); }
 .warn.police { --c: var(--police); --cs: var(--police-soft); }
+.warn.camera, .card.camera, .pop.camera { --c: var(--cam); --cs: var(--cam-soft); }
 .warn.goslow { --c: var(--slow); --cs: var(--slow-soft); }
 .warn-top { display: flex; align-items: center; gap: 12px; }
 .warn-top .pin-icon { width: 44px; height: 44px; }
@@ -133,10 +134,10 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 4px; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sheet-head h2 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 800; }
-.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.tile { border: 0; border-radius: 18px; padding: 18px 12px; display: grid; justify-items: center; gap: 8px; color: var(--on-color); font-weight: 800; font-size: 17px; font-family: var(--display); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.tile { border: 0; border-radius: 18px; padding: 16px 8px; text-align: center; line-height: 1.15; display: grid; justify-items: center; gap: 8px; color: var(--on-color); font-weight: 800; font-size: 16px; font-family: var(--display); }
 .tile svg { width: 44px; height: 44px; }
-.tile.police { background: var(--police); } .tile.goslow { background: var(--slow); }
+.tile.police { background: var(--police); } .tile.goslow { background: var(--slow); } .tile.camera { background: var(--cam); }
 .tile:disabled { opacity: .5; }
 .where { font-size: 14px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .where b { color: var(--ink); }
@@ -169,7 +170,7 @@ label .opt { font-weight: 400; color: var(--muted); }
 .pin { background: none; border: 0; }
 .pin-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); color: #fff; }
 .pin-icon svg { width: 22px; height: 22px; }
-.pin-icon.police { background: #1f4fb8; } .pin-icon.goslow { background: #c2410c; }
+.pin-icon.police { background: #1f4fb8; } .pin-icon.goslow { background: #c2410c; } .pin-icon.camera { background: #7a3fc4; }
 .me { background: none; border: 0; }
 .me-dot { width: 26px; height: 26px; position: relative; }
 .me-dot i { position: absolute; inset: 4px; border-radius: 50%; background: #2f7cf6; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.4); }
@@ -249,6 +250,7 @@ label .opt { font-weight: 400; color: var(--muted); }
     <div class="tiles">
       <button class="tile police" id="r-police" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>Police roadblock</button>
       <button class="tile goslow" id="r-goslow" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>Go-slow</button>
+      <button class="tile camera" id="r-camera" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h2l1.3-1.6A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.2.6L16.5 5h2A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5zM12 16.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2.2a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>Speed camera</button>
     </div>
     <p class="small" style="margin:0">Tap one to send. Mount your phone; no type while you dey drive.</p>
   </div>
@@ -262,6 +264,7 @@ label .opt { font-weight: 400; color: var(--muted); }
       <button class="chip" data-f="all" aria-pressed="true" type="button">All</button>
       <button class="chip" data-f="police" aria-pressed="false" type="button">Police</button>
       <button class="chip" data-f="goslow" aria-pressed="false" type="button">Go-slow</button>
+      <button class="chip" data-f="camera" aria-pressed="false" type="button">Camera</button>
     </div>
     <div class="feed" id="feed"></div>
     <p class="small" style="margin:0">Police report go off after 2 hours, go-slow after 1 hour, unless person confirm say e still dey.</p>
@@ -371,7 +374,7 @@ const ROAD_ALIASES = [
   ["east ?-? ?west road", "East-West Rd"], ["aba road", "Aba Rd"], ["ikwerre road|ikwere road", "Ikwerre Rd"],
   ["airport road", "Airport Rd"]
 ];
-const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police|warden)|officers?|soldier|soldiers|army|lastma|last ma|frsc|f r s c|road safety|vio|v i o|mopol|mobile police|npf|customs|task force|patrol)\b/;
+const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police|warden)|officers?|soldier|soldiers|army|lastma|last ma|frsc|f r s c|road safety|vio|v i o|mopol|mobile police|npf|customs|task force|patrol|speed trap|speed check|speed gun)\b/;
 const GOSLOW_RX = /\b(go ?slow|go-slow|traffic|jam|hold ?up|holdup|accident|crash|standstill|stand still|no dey move|e no dey move|stuck|congestion|gridlock|breakdown|broke down|broken down|tanker|trailer|flood|flooded|flooding)\b/;
 const YES_RX = /\b(yes|yeah|yah|yep|yup|ya|ja|sure|ok|okay|correct|na so|drop am|drop it|send|go ahead|do am|confirm|right|make we go|oya|let's go|lets go)\b/;
 const NO_RX = /\b(no|nope|cancel|wrong|comot|leave am|stop)\b/;
@@ -380,7 +383,8 @@ const NAV_RX = /\b(?:carry me go|carry me to|take me go|take me to|navigate to|n
 const STOP_RX = /\b(?:stop|end|cancel)\b.*\b(?:navigation|navigating|direction|directions|trip|journey)\b|\bstop navigat|\bwe don reach\b/;
 
 function norm(t) { return (" " + String(t || "").toLowerCase().replace(/[^a-z0-9' -]/g, " ").replace(/\s+/g, " ") + " "); }
-function detectType(t) { t = norm(t); if (POLICE_RX.test(t)) return "police"; if (GOSLOW_RX.test(t)) return "goslow"; return null; }
+const CAMERA_RX = /\b(speed camera|speed cameras|speed cam|camera|cameras|flash camera|traffic camera|robot camera|camera dey flash)\b/;
+function detectType(t) { t = norm(t); if (CAMERA_RX.test(t)) return "camera"; if (POLICE_RX.test(t)) return "police"; if (GOSLOW_RX.test(t)) return "goslow"; return null; }
 function detectRoad(t) {
   t = norm(t);
   for (const [rx, name] of ROAD_ALIASES) { const m = t.match(new RegExp(rx)); if (m) return { road: name, rest: t.replace(m[0], " ") }; }
@@ -489,7 +493,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 </script>
 <script>
 (() => {
-  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3 };
+  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3 };  // fixed speed cameras stay 30 days after the last "E still dey"
   const $ = (id) => document.getElementById(id);
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
   const DEVICE = ls.get("rg-device") || (() => { const id = "d" + Math.random().toString(36).slice(2) + Date.now().toString(36); ls.set("rg-device", id); return id; })();
@@ -565,8 +569,12 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       async refresh() {
         const since = new Date(Date.now() - 6 * 3600e3).toISOString();
         if (!navigator.onLine) { netStatus(); return; }
-        const { data: reps, error } = await sb.from("reports").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
+        const { data: recent, error } = await sb.from("reports").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
         if (error) { netStatus(true); return; }
+        const camSince = new Date(Date.now() - 90 * 86400e3).toISOString();
+        const { data: cams } = await sb.from("reports").select("*").eq("type", "camera").gte("created_at", camSince).order("created_at", { ascending: false }).limit(500);
+        const seenIds = new Set(recent.map(r => r.id));
+        const reps = recent.concat((cams || []).filter(r => !seenIds.has(r.id)));
         const ids = reps.map(r => r.id);
         let cons = [];
         if (ids.length) { const res = await sb.from("confirmations").select("report_id,kind,device_id,created_at").in("report_id", ids); cons = res.data || []; }
@@ -663,7 +671,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (clears.some(([dev]) => dev === r.by)) return false;
     return clears.length < 2;
   }
-  const label = (t) => t === "police" ? "Police roadblock" : "Go-slow";
+  const label = (t) => t === "police" ? "Police roadblock" : t === "camera" ? "Speed camera" : "Go-slow";
   const posOf = (r) => r.lat != null ? { lat: r.lat, lng: r.lng } : (AREA_CENTERS[r.area] ? { lat: AREA_CENTERS[r.area][0], lng: AREA_CENTERS[r.area][1] } : null);
   const activeList = () => reports.filter(isActive);
 
@@ -681,7 +689,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
   const SHIELD = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>';
   const BARS = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>';
-  const iconHtml = (type) => `<span class="pin-icon ${type}">${type === "police" ? SHIELD : BARS}</span>`;
+  const CAMERA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h2l1.3-1.6A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.2.6L16.5 5h2A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5zM12 16.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2.2a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>';
+  const typeIcon = (type) => type === "police" ? SHIELD : type === "camera" ? CAMERA : BARS;
+  const iconHtml = (type) => `<span class="pin-icon ${type}">${typeIcon(type)}</span>`;
   const pinIcon = (type) => L.divIcon({ className: "pin", html: iconHtml(type), iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20] });
 
   let me = null, meMarker = null, meCircle = null, follow = true, firstFix = true;
@@ -786,12 +796,14 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   function showWarning(r, dist) {
     warnFor = r;
     $("warn").className = "warn " + r.type;
-    $("warn-icon").className = "pin-icon " + r.type; $("warn-icon").innerHTML = r.type === "police" ? SHIELD : BARS;
+    $("warn-icon").className = "pin-icon " + r.type; $("warn-icon").innerHTML = typeIcon(r.type);
     $("warn-title").textContent = `${label(r.type)} ahead · ${fmtDist(dist)}`;
     $("warn-sub").textContent = [r.road, r.area, "reported " + ago(r.createdAt)].filter(Boolean).join(" · ");
     $("warn").hidden = false;
     clearTimeout(warnTimer); warnTimer = setTimeout(() => $("warn").hidden = true, 20000);
-    if (!busy) say(r.type === "police" ? [{ c: "police-ahead", t: `Police roadblock dey ${sayDist(dist)} ahead. Make sure your papers complete, and drive jeje.` }] : [{ c: "goslow-ahead", t: `Go-slow dey ${sayDist(dist)} ahead. Take am easy.` }]);
+    if (!busy) say(r.type === "police" ? [{ c: "police-ahead", t: `Police roadblock dey ${sayDist(dist)} ahead. Make sure your papers complete, and drive jeje.` }]
+      : r.type === "camera" ? [{ c: "camera-ahead", t: `Speed camera dey ${sayDist(dist)} ahead. Check your speed.` }]
+      : [{ c: "goslow-ahead", t: `Go-slow dey ${sayDist(dist)} ahead. Take am easy.` }]);
   }
   $("warn-still").onclick = () => { if (warnFor) vote(warnFor.id, "still"); $("warn").hidden = true; };
   $("warn-clear").onclick = () => { if (warnFor) vote(warnFor.id, "cleared"); $("warn").hidden = true; };
@@ -842,16 +854,17 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     let area, pos = reportPos;
     if (pos) area = await placeName(pos);
     else { area = $("r-area").value; if (!area) { toast("Abeg choose the area."); return; } const c = AREA_CENTERS[area]; pos = { lat: c[0], lng: c[1] }; }
-    $("r-police").disabled = $("r-goslow").disabled = true;
+    $("r-police").disabled = $("r-goslow").disabled = $("r-camera").disabled = true;
     try {
       const res = await store.add({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
       ls.set("rg-myarea", area); closeSheets(); toast(res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
     } catch (e) { toast(rcMessage(e)); }
-    finally { $("r-police").disabled = $("r-goslow").disabled = false; }
+    finally { $("r-police").disabled = $("r-goslow").disabled = $("r-camera").disabled = false; }
   }
   $("btn-report").onclick = openReport;
   $("r-police").onclick = () => sendTyped("police");
   $("r-goslow").onclick = () => sendTyped("goslow");
+  $("r-camera").onclick = () => sendTyped("camera");
 
   /* ===== 8. Alerts list ===== */
   let filterType = "all";
@@ -928,8 +941,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (j.code !== "Ok" || !j.routes || !j.routes.length) throw new Error("no route");
     return j.routes.map(buildRoute);
   }
-  function reportsOn(route) {
-    return activeList().filter(r => r.lat != null && projectOnRoute(route, { lat: r.lat, lng: r.lng }, -1).d < 60);
+  function reportsOn(route, cameras = false) {
+    return activeList().filter(r => r.lat != null && (r.type === "camera") === cameras && projectOnRoute(route, { lat: r.lat, lng: r.lng }, -1).d < 60);
   }
   function pickRoute(routes) {
     // Like Waze: prefer the road with fewer roadblocks if it costs at most a few extra minutes
@@ -963,6 +976,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     let intro = `${dest.title}. ${fmtDur(best.duration)}.`;
     if (avoided) intro += " I don choose road wey no get roadblock.";
     else if (n > 0) intro += ` ${n === 1 ? "One report dey" : n + " reports dey"} for this road. I go warn you when you near.`;
+    const cams = reportsOn(best, true).length;
+    if (cams > 0) intro += ` ${cams === 1 ? "One speed camera dey" : cams + " speed cameras dey"} for this road.`;
     intro += " " + (best.departText || "");
     setTalk("idle", "Tap and talk", "");
     say([{ c: "lets-go", t: "We dey go" }, intro]);
@@ -1061,7 +1076,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (sub !== undefined) $("talk-sub").textContent = sub;
   }
   /* --- Your own recorded voice clips (voice folder on GitHub). Any clip not found uses the phone voice. --- */
-  const VOICE_KEYS = ["talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
+  const VOICE_KEYS = ["camera-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
   const vnorm = (s) => String(s).toLowerCase().replace(/\.(m4a|mp3|wav|aac|caf|mp4|ogg)$/, "").replace(/[^a-z0-9]/g, "");
   const clipUrl = {};
   const player = new Audio(); player.preload = "auto";
