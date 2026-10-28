@@ -279,7 +279,9 @@ label .opt { font-weight: 400; color: var(--muted); }
 /* ===== 1. Settings ===== */
 const CONFIG = {
   SUPABASE_URL: "https://iqniyhsnzsxehjzsllvl.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ"
+  SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ",
+  // Map, search and directions. Leave empty to use the free public servers only.
+  GEOAPIFY_KEY: "754ad2a4ea5e44d1af49f45de9a41462"
 };
 </script>
 <script>
@@ -486,6 +488,39 @@ function buildRoute(r) {
   }
   return { coords, cum, steps, departText, distance: r.distance, duration: r.duration };
 }
+// Turns a Geoapify routing answer into the same shape as buildRoute()
+function buildGeoRoute(feature) {
+  const pr = feature.properties || {};
+  const parts = feature.geometry.type === "MultiLineString" ? feature.geometry.coordinates : [feature.geometry.coordinates];
+  const coords = [], offsets = [];
+  for (const line of parts) { offsets.push(coords.length); for (const [lng, lat] of line) coords.push({ lat, lng }); }
+  const cum = cumulative(coords);
+  const steps = []; let departText = "";
+  (pr.legs || []).forEach((leg, li) => {
+    for (const st of leg.steps || []) {
+      const ins = st.instruction || {}, t = String(ins.type || ""), name = (ins.streets && ins.streets[0]) || "";
+      const lr = /Left/.test(t) ? "left" : /Right/.test(t) ? "right" : "";
+      let type = "turn", mod = lr;
+      if (/^StartAt/.test(t)) { departText = stepText("depart", "", name); continue; }
+      if (/^DestinationReached/.test(t)) type = "arrive";
+      else if (/RoundaboutExit|ExitRoundabout/.test(t)) type = "exit roundabout";
+      else if (/Roundabout/.test(t)) { type = "roundabout"; const m = String(ins.text || "").match(/(\d+)(?:st|nd|rd|th)\s+exit/i); exitNo = m ? +m[1] : 1; }
+      else if (/^Exit/.test(t)) type = "off ramp";
+      else if (/^Ramp/.test(t)) type = "on ramp";
+      else if (/^Merge/.test(t)) type = "merge";
+      else if (/^Stay|^Keep/.test(t)) { if (!lr) continue; type = "fork"; }
+      else if (/UTurn/.test(t)) mod = "uturn";
+      else if (/Slight/.test(t)) mod = "slight " + lr;
+      else if (/Sharp/.test(t)) mod = "sharp " + lr;
+      else if (/Straight|Continue|Ferry|Transit/.test(t) || !lr) continue;
+      const idx = Math.min(coords.length - 1, (offsets[li] || 0) + (st.from_index || 0));
+      if (!/roundabout/.test(type)) exitNo = 1;
+      steps.push({ type, mod, name, text: stepText(type, mod, name), roundabout: /roundabout|rotary/.test(type), at: cum[idx], a0: false, a1: false, a2: false });
+    }
+  });
+  if (!steps.length || steps[steps.length - 1].type !== "arrive") steps.push({ type: "arrive", mod: "", name: "", text: stepText("arrive"), roundabout: false, at: cum[cum.length - 1], a0: false, a1: false, a2: false });
+  return { coords, cum, steps, departText, distance: pr.distance || cum[cum.length - 1], duration: pr.time || (cum[cum.length - 1] / 11) };
+}
 function fmtDist(m) { return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`; }
 function sayDist(m) { return m < 1000 ? `${Math.max(50, Math.round(m / 50) * 50)} metres` : `${(m / 1000).toFixed(1).replace(/\.0$/, "")} kilometres`; }
 function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; }
@@ -685,7 +720,17 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   /* ===== 4. Map ===== */
   const map = L.map("map", { zoomControl: false, attributionControl: true }).setView([CT.lat, CT.lng], 11);
   map.attributionControl.setPrefix(false);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" }).addTo(map);
+  const GEO_KEY = CONFIG.GEOAPIFY_KEY;
+  const osmTiles = () => L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" });
+  let tiles;
+  if (GEO_KEY) {
+    tiles = L.tileLayer(`https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}{r}.png?apiKey=${GEO_KEY}`, { maxZoom: 20, crossOrigin: true,
+      attribution: 'Powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a> | © OpenMapTiles © OpenStreetMap contributors' }).addTo(map);
+    // If Geoapify tiles keep failing (down, or the day's credits are used up), switch to the free map
+    let fails = 0;
+    tiles.on("tileerror", () => { if (navigator.onLine && ++fails >= 6 && tiles._rc !== "osm") { map.removeLayer(tiles); tiles = osmTiles().addTo(map); tiles._rc = "osm"; } });
+    tiles.on("tileload", () => { fails = 0; });
+  } else tiles = osmTiles().addTo(map);
 
   const SHIELD = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>';
   const BARS = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>';
@@ -819,10 +864,19 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   async function reverseInfo(p) {
     const key = p.lat.toFixed(4) + "," + p.lng.toFixed(4);
     if (roadCache.has(key)) return roadCache.get(key);
+    const timed = (url) => { const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 3500); return fetch(url, { signal: ctl.signal }).finally(() => clearTimeout(t)); };
+    if (GEO_KEY) {
+      try {
+        const res = await timed(`https://api.geoapify.com/v1/geocode/reverse?lat=${p.lat}&lon=${p.lng}&lang=en&format=json&apiKey=${GEO_KEY}`);
+        if (res.ok) {
+          const r = ((await res.json()).results || [])[0] || {};
+          const info = { road: (r.street || r.name || "").slice(0, 80), city: r.city || r.suburb || r.district || r.county || r.state || "" };
+          roadCache.set(key, info); return info;
+        }
+      } catch {}
+    }
     try {
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 3500);
-      const res = await fetch(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}&lang=en`, { signal: ctl.signal });
-      clearTimeout(t);
+      const res = await timed(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}&lang=en`);
       const j = await res.json(); const pr = (j.features && j.features[0] && j.features[0].properties) || {};
       const info = { road: (pr.street || pr.name || "").slice(0, 80), city: pr.city || pr.district || pr.county || pr.state || "" };
       roadCache.set(key, info); return info;
@@ -893,6 +947,24 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
   /* ===== 9. Search ===== */
   async function geocode(q) {
+    if (GEO_KEY) { try { const r = await geocodeGeo(q); if (r) return r; } catch {} }
+    return geocodePhoton(q);
+  }
+  async function geocodeGeo(q) {
+    const bias = me || CT;
+    const city = (me && cityOf(me)) || (me ? null : curCity);
+    const base = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&bias=proximity:${bias.lng},${bias.lat}&limit=6&lang=en&format=json&apiKey=${GEO_KEY}`;
+    const get = async (url) => { const res = await fetch(url); if (!res.ok) throw new Error("geoapify " + res.status); return (await res.json()).results || []; };
+    let list = [];
+    if (city) { const [x1, y1, x2, y2] = CITIES[city].bbox.split(","); list = await get(`${base}&filter=rect:${x1},${y1},${x2},${y2}`); }
+    if (!list.length) list = await get(base);
+    return list.map(r => {
+      const title = r.name || r.address_line1 || r.street || r.city || q;
+      const sub = [r.address_line2, r.address_line1 !== title ? r.address_line1 : ""].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i && v !== title).join(", ");
+      return { title, sub, lat: r.lat, lng: r.lon };
+    });
+  }
+  async function geocodePhoton(q) {
     const bias = me || CT;
     const city = (me && cityOf(me)) || (me ? null : curCity);
     const base = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${bias.lat}&lon=${bias.lng}&limit=6&lang=en`;
@@ -911,7 +983,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const q = $("q").value.trim(); $("q-clear").hidden = !q; $("brand").hidden = !!q;
     clearTimeout(searchT);
     if (q.length < 3) { $("results").hidden = true; return; }
-    searchT = setTimeout(() => runSearch(q), 350);
+    searchT = setTimeout(() => runSearch(q), GEO_KEY ? 550 : 350);  // a little slower with Geoapify to save daily credits
   });
   $("search-form").addEventListener("submit", (e) => { e.preventDefault(); const q = $("q").value.trim(); if (q) runSearch(q); $("q").blur(); });
   $("q-clear").onclick = () => { $("q").value = ""; $("q-clear").hidden = true; $("brand").hidden = false; $("results").hidden = true; };
@@ -936,6 +1008,24 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   /* ===== 10. Navigation ===== */
   let nav = null, routeLayer = null, routeCasing = null, destMarker = null;
   async function fetchRoutes(a, b) {
+    if (GEO_KEY) { try { return await fetchRoutesGeo(a, b); } catch {} }
+    return fetchRoutesOsrm(a, b);
+  }
+  async function geoRoute(a, b, extra = "") {
+    const res = await fetch(`https://api.geoapify.com/v1/routing?waypoints=${a.lat},${a.lng}|${b.lat},${b.lng}&mode=drive&details=instruction_details&lang=en${extra}&apiKey=${GEO_KEY}`);
+    if (!res.ok) throw new Error("geoapify " + res.status);
+    const f = ((await res.json()).features || [])[0];
+    if (!f) throw new Error("no route");
+    return buildGeoRoute(f);
+  }
+  async function fetchRoutesGeo(a, b) {
+    const first = await geoRoute(a, b);
+    const blocks = reportsOn(first).slice(0, 5);
+    if (!blocks.length) return [first];
+    // Ask for a second road that goes round the roadblocks; if that fails, keep the first road
+    try { return [first, await geoRoute(a, b, "&avoid=" + blocks.map(r => `location:${r.lat},${r.lng}`).join("|"))]; } catch { return [first]; }
+  }
+  async function fetchRoutesOsrm(a, b) {
     const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
     const res = await fetch(url); const j = await res.json();
     if (j.code !== "Ok" || !j.routes || !j.routes.length) throw new Error("no route");

@@ -1,5 +1,5 @@
 // Road Clear offline helper: opens the app with no signal and keeps map areas you've seen.
-const VERSION = "rc-2026-10-28g";
+const VERSION = "rc-2026-10-29a";
 const SHELL_CACHE = "rc-shell-" + VERSION;
 const TILE_CACHE = "rc-tiles-v1";
 const MAX_TILES = 3000; // roughly 40–60 MB of map
@@ -34,7 +34,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
 
   // Map tiles: use the saved copy first, fetch and save new ones
-  if (url.hostname === "tile.openstreetmap.org") {
+  if (url.hostname === "tile.openstreetmap.org" || (url.hostname === "maps.geoapify.com" && url.pathname.startsWith("/v1/tile/"))) {
     e.respondWith(caches.open(TILE_CACHE).then(async (cache) => {
       const hit = await cache.match(req);
       if (hit) return hit;
