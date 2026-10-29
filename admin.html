@@ -15,6 +15,7 @@
 :root {
   --bg: #f2f3ef; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcdfd6;
   --brand: #1f4f3e; --gold: #c99a3a; --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
+  --acc: #c81e2e; --acc-soft: #fde7e9; --hole: #8a5a2b; --hole-soft: #f4ebe1; --flood: #0e7490; --flood-soft: #dff2f7; --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee;
   --ok: #18794e; --ok-soft: #e1f3ea; --danger: #b42318; --danger-soft: #fde8e6;
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -23,6 +24,7 @@
 @media (prefers-color-scheme: dark) { :root {
   --bg: #121512; --surface: #1c201c; --ink: #eceee8; --muted: #a2a79c; --line: #323830;
   --brand: #173d30; --gold: #e3b964; --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116; --cam: #c4a1f5; --cam-soft: #2c2140;
+  --acc: #ff8a94; --acc-soft: #3b1519; --hole: #d9a877; --hole-soft: #33261a; --flood: #67cde6; --flood-soft: #11303a; --robot: #c3c9d3; --robot-soft: #262a30; --brk: #f58ab8; --brk-soft: #3a1626; --prot: #e4e4e7; --prot-soft: #2a2a2e;
   --ok: #4fc58c; --ok-soft: #15301f; --danger: #f97066; --danger-soft: #3a1714; color-scheme: dark } }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -68,6 +70,8 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
 .list { display: grid; gap: 10px; }
 .rep { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
 .rep.police { --c: var(--police); --cs: var(--police-soft); } .rep.goslow { --c: var(--slow); --cs: var(--slow-soft); } .rep.camera { --c: var(--cam); --cs: var(--cam-soft); }
+.rep.accident { --c: var(--acc); --cs: var(--acc-soft); } .rep.pothole { --c: var(--hole); --cs: var(--hole-soft); } .rep.flood { --c: var(--flood); --cs: var(--flood-soft); }
+.rep.robot { --c: var(--robot); --cs: var(--robot-soft); } .rep.breakdown { --c: var(--brk); --cs: var(--brk-soft); } .rep.protest { --c: var(--prot); --cs: var(--prot-soft); }
 .rep.gone { opacity: .62; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kind { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c); background: var(--cs); padding: 3px 8px; border-radius: 6px; }
@@ -94,6 +98,19 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
 .tbl tr:last-child td { border-bottom: 0; }
 .section-title { margin: 4px 0 -4px; font-family: var(--display); font-size: 20px; }
 @media (max-width: 480px) { .split { grid-template-columns: 1fr; } }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid .full { grid-column: 1 / -1; }
+.hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+.sp-row { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.sp-row:last-child { border-bottom: 0; }
+.sp-row img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; background: var(--bg); }
+.sp-row .sp-info { min-width: 0; display: grid; gap: 2px; }
+.sp-row b { font-size: 16px; overflow-wrap: anywhere; }
+.sp-row .sp-nums { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sp-row .acts { grid-column: 1 / -1; }
+.pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+.pill.on { background: var(--ok-soft); color: var(--ok); } .pill.off { background: var(--line); color: var(--muted); }
+@media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
 .empty { text-align: center; padding: 24px 12px; border: 2px dashed var(--line); border-radius: 14px; color: var(--muted); }
 .blocked-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .blocked-row:last-child { border-bottom: 0; }
@@ -135,6 +152,29 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
       <p class="small" id="u-note" style="margin:0">Each phone counts once a day. Only the city is recorded, never the exact location.</p>
     </div>
 
+    <div class="card" id="sponsors">
+      <h2>Sponsors</h2>
+      <p class="small" style="margin:0">Sponsors show now and then at the bottom of the app and at the top of the Alerts list. Never while someone is following directions.</p>
+      <div id="sp-list"></div>
+      <details id="sp-add-box">
+        <summary class="btn ghost" style="list-style:none;text-align:center">Add a sponsor</summary>
+        <form id="sp-form" class="form-grid" style="margin-top:12px">
+          <label class="full" for="sp-name">Business name<input id="sp-name" maxlength="60" required placeholder="e.g. Palm Royal Hotel, Lagos"></label>
+          <label class="full" for="sp-msg">Message <span class="hint">(max 140 letters)</span><input id="sp-msg" maxlength="140" required placeholder="e.g. Going home for December? Stay with us in Ikeja."></label>
+          <label for="sp-cta">Button text<input id="sp-cta" maxlength="30" placeholder="Book now"></label>
+          <label for="sp-code">Discount code <span class="hint">(optional)</span><input id="sp-code" maxlength="30" placeholder="ROADCLEAR10"></label>
+          <label class="full" for="sp-link">Button link <span class="hint">(website, or WhatsApp like https://wa.me/2348012345678)</span><input id="sp-link" type="url" maxlength="300" placeholder="https://"></label>
+          <label class="full" for="sp-logo">Logo <span class="hint">(upload to the sponsors folder on GitHub, then type e.g. sponsors/hotel.png)</span><input id="sp-logo" maxlength="300" placeholder="sponsors/hotel.png"></label>
+          <label for="sp-city">Show in<select id="sp-city"><option value="">All cities</option><option value="capetown">Cape Town</option><option value="lagos">Lagos</option><option value="abuja">Abuja</option><option value="ph">Port Harcourt</option></select></label>
+          <span></span>
+          <label for="sp-start">Start date <span class="hint">(optional)</span><input id="sp-start" type="date"></label>
+          <label for="sp-end">End date <span class="hint">(optional)</span><input id="sp-end" type="date"></label>
+          <div id="sp-msg-box" class="msg full" hidden></div>
+          <button class="btn full" id="sp-save" type="submit">Save sponsor</button>
+        </form>
+      </details>
+    </div>
+
     <h2 class="section-title">Reports</h2>
     <div class="stats">
       <div class="stat"><b id="s-live">0</b><span>Showing on the map now</span></div>
@@ -150,6 +190,8 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
           <button class="chip" data-f="police" aria-pressed="false" type="button">Police</button>
           <button class="chip" data-f="goslow" aria-pressed="false" type="button">Go-slow</button>
           <button class="chip" data-f="camera" aria-pressed="false" type="button">Cameras</button>
+          <button class="chip" data-f="accident" aria-pressed="false" type="button">Accidents</button>
+          <button class="chip" data-f="hazard" aria-pressed="false" type="button">Potholes, floods, protests, more</button>
           <button class="chip" data-f="busy" aria-pressed="false" type="button">Busy phones</button>
         </div>
         <select id="days" aria-label="How far back">
@@ -180,7 +222,9 @@ const CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ"
 };
 (() => {
-  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3 };
+  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3, accident: 120 * 60e3, pothole: 30 * 86400e3, flood: 12 * 3600e3, robot: 6 * 3600e3, breakdown: 60 * 60e3, protest: 3 * 3600e3 };
+  const LABELS = { police: "Police roadblock", goslow: "Go-slow", camera: "Speed camera", accident: "Accident", pothole: "Pothole", flood: "Flood", robot: "Traffic light off", breakdown: "Car breakdown", protest: "Protest or unrest" };
+  const HAZ = ["pothole", "flood", "robot", "breakdown", "protest"];
   const $ = (id) => document.getElementById(id);
   const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const toast = (m) => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); };
@@ -227,10 +271,64 @@ const CONFIG = {
     const byId = Object.fromEntries(reports.map(r => [r.id, r]));
     for (const c of cons) { const r = byId[c.report_id]; if (r) r[c.kind][c.device_id] = Math.max(r[c.kind][c.device_id] || 0, Date.parse(c.created_at)); }
     render(); renderBlocked(bl || []);
-    loadUsers();
+    loadUsers(); loadSponsors();
     $("refresh").disabled = false;
   }
   const CITY_NAMES = { capetown: "Cape Town", lagos: "Lagos", abuja: "Abuja", ph: "Port Harcourt", other: "Other places", unknown: "Location off" };
+  /* ---- Sponsors ---- */
+  const CITY_LABEL = { capetown: "Cape Town", lagos: "Lagos", abuja: "Abuja", ph: "Port Harcourt" };
+  async function loadSponsors() {
+    const box = $("sp-list");
+    const { data, error } = await sb.from("sponsors").select("*").order("created_at", { ascending: false });
+    if (error) { box.innerHTML = '<p class="small">Sponsors need the sponsors.sql update in Supabase.</p>'; return; }
+    const { data: stats } = await sb.rpc("rc_sponsor_stats");
+    const by = Object.fromEntries((stats || []).map(x => [x.sponsor_id, x]));
+    box.replaceChildren();
+    if (!data.length) { box.innerHTML = '<p class="small" style="margin:8px 0 0">No sponsors yet.</p>'; return; }
+    const todayIso = new Date().toLocaleDateString("en-CA");
+    for (const sp of data) {
+      const st = by[sp.id] || { views: 0, taps: 0, views_today: 0 };
+      const live = sp.active && (!sp.starts_on || sp.starts_on <= todayIso) && (!sp.ends_on || sp.ends_on >= todayIso);
+      const row = document.createElement("div"); row.className = "sp-row";
+      const img = document.createElement("img"); img.alt = ""; if (sp.logo_url) { img.src = sp.logo_url; img.onerror = () => img.style.visibility = "hidden"; } else img.style.visibility = "hidden";
+      const info = document.createElement("div"); info.className = "sp-info";
+      const nm = document.createElement("b"); nm.textContent = sp.name;
+      const pill = document.createElement("span"); pill.className = "pill " + (live ? "on" : "off"); pill.textContent = live ? "Showing" : (sp.active ? "Not in date range" : "Paused");
+      const msg = document.createElement("span"); msg.className = "small"; msg.textContent = sp.message;
+      const nums = document.createElement("span"); nums.className = "sp-nums";
+      const rate = st.views ? Math.round(100 * st.taps / st.views) : 0;
+      nums.textContent = `Last 30 days: ${st.views} views · ${st.taps} taps (${rate}%) · ${st.views_today} views today · ${sp.city ? CITY_LABEL[sp.city] : "All cities"}${sp.code ? " · code " + sp.code : ""}`;
+      info.append(nm, pill, msg, nums);
+      const acts = document.createElement("div"); acts.className = "acts";
+      const tog = document.createElement("button"); tog.type = "button"; tog.textContent = sp.active ? "Pause" : "Resume";
+      tog.onclick = async () => { tog.disabled = true; const { error } = await sb.from("sponsors").update({ active: !sp.active }).eq("id", sp.id); if (error) toast("Could not change: " + error.message); loadSponsors(); };
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "Delete";
+      del.onclick = () => {
+        if (del.dataset.sure) { sb.from("sponsors").delete().eq("id", sp.id).then(({ error }) => { if (error) toast("Could not delete: " + error.message); else toast("Sponsor deleted."); loadSponsors(); }); return; }
+        del.dataset.sure = "1"; del.textContent = "Tap again to delete"; setTimeout(() => { delete del.dataset.sure; del.textContent = "Delete"; }, 4000);
+      };
+      acts.append(tog, del);
+      if (sp.link) { const a = document.createElement("a"); a.href = sp.link; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Open link"; acts.append(a); }
+      row.append(img, info, acts); box.append(row);
+    }
+  }
+  $("sp-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const m = $("sp-msg-box"); m.hidden = true;
+    const link = $("sp-link").value.trim();
+    if (link && !/^https:\/\//i.test(link)) { m.textContent = "The link must start with https://"; m.hidden = false; return; }
+    const row = {
+      name: $("sp-name").value.trim(), message: $("sp-msg").value.trim(), cta_label: $("sp-cta").value.trim() || null,
+      link: link || null, code: $("sp-code").value.trim() || null, logo_url: $("sp-logo").value.trim() || null,
+      city: $("sp-city").value || null, starts_on: $("sp-start").value || null, ends_on: $("sp-end").value || null, active: true
+    };
+    $("sp-save").disabled = true;
+    const { error } = await sb.from("sponsors").insert(row);
+    $("sp-save").disabled = false;
+    if (error) { m.textContent = "Could not save: " + error.message; m.hidden = false; return; }
+    $("sp-form").reset(); $("sp-add-box").open = false; toast("Sponsor saved. It shows in the app within 30 minutes, or straight away on a fresh open."); loadSponsors();
+  });
+
   async function loadUsers() {
     const { data, error } = await sb.rpc("rc_usage");
     if (error) { $("u-note").textContent = "User counts need the usage.sql update in Supabase."; return; }
@@ -270,7 +368,8 @@ const CONFIG = {
     const q = $("q").value.trim().toLowerCase();
     let list = reports.filter(r => {
       if (filter === "live" && !isLive(r)) return false;
-      if ((filter === "police" || filter === "goslow" || filter === "camera") && r.type !== filter) return false;
+      if (["police", "goslow", "camera", "accident"].includes(filter) && r.type !== filter) return false;
+      if (filter === "hazard" && !HAZ.includes(r.type)) return false;
       if (filter === "busy" && perPhone[r.device_id] < 5) return false;
       if (q && ![r.area, r.road, r.note].join(" ").toLowerCase().includes(q)) return false;
       return true;
@@ -289,7 +388,7 @@ const CONFIG = {
       <div class="meta"></div>
       <div class="phone"></div>
       <div class="acts"></div>`;
-    el.querySelector(".kind").textContent = r.type === "police" ? "Police roadblock" : r.type === "camera" ? "Speed camera" : "Go-slow";
+    el.querySelector(".kind").textContent = LABELS[r.type] || r.type;
     const st = el.querySelector(".status"); st.className = "status " + (live ? "live" : "done"); st.textContent = live ? "On map" : "Expired or cleared";
     el.querySelector(".place").textContent = [r.road, r.area].filter(Boolean).join(", ") || "No place given";
     const when = new Date(r.t).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });

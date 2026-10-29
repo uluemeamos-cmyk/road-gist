@@ -21,7 +21,8 @@
 :root {
   --bg: #f3f1ec; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcd8cf;
   --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
-  --sign: #f5b301; --ok: #18794e; --ok-soft: #e1f3ea; --route: #2f7cf6; --on-color: #ffffff;
+  --acc: #c81e2e; --acc-soft: #fde7e9; --hole: #8a5a2b; --hole-soft: #f4ebe1; --flood: #0e7490; --flood-soft: #dff2f7;
+  --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee;: #f5b301; --ok: #18794e; --ok-soft: #e1f3ea; --route: #2f7cf6; --on-color: #ffffff;
   --shadow: 0 6px 24px rgba(0,0,0,.18);
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -30,6 +31,8 @@
 @media (prefers-color-scheme: dark) { :root {
   --bg: #141613; --surface: #1e211d; --ink: #eceee8; --muted: #a2a79c; --line: #33372f;
   --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116; --cam: #c4a1f5; --cam-soft: #2c2140;
+  --acc: #ff8a94; --acc-soft: #3b1519; --hole: #d9a877; --hole-soft: #33261a; --flood: #67cde6; --flood-soft: #11303a;
+  --robot: #c3c9d3; --robot-soft: #262a30; --brk: #f58ab8; --brk-soft: #3a1626; --prot: #e4e4e7; --prot-soft: #2a2a2e;
   --ok: #4fc58c; --ok-soft: #15301f; --route: #5c9bff; --on-color: #111; --shadow: 0 6px 24px rgba(0,0,0,.5); color-scheme: dark }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.9) saturate(.6); }
   .leaflet-container { background: #1a1c19; }
@@ -79,6 +82,12 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .warn { display: grid; gap: 10px; background: var(--surface); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); border-left: 8px solid var(--c); }
 .warn.police { --c: var(--police); --cs: var(--police-soft); }
 .warn.camera, .card.camera, .pop.camera { --c: var(--cam); --cs: var(--cam-soft); }
+.warn.accident, .card.accident, .pop.accident { --c: var(--acc); --cs: var(--acc-soft); }
+.warn.pothole, .card.pothole, .pop.pothole { --c: var(--hole); --cs: var(--hole-soft); }
+.warn.flood, .card.flood, .pop.flood { --c: var(--flood); --cs: var(--flood-soft); }
+.warn.robot, .card.robot, .pop.robot { --c: var(--robot); --cs: var(--robot-soft); }
+.warn.breakdown, .card.breakdown, .pop.breakdown { --c: var(--brk); --cs: var(--brk-soft); }
+.warn.protest, .card.protest, .pop.protest { --c: var(--prot); --cs: var(--prot-soft); }
 .warn.goslow { --c: var(--slow); --cs: var(--slow-soft); }
 .warn-top { display: flex; align-items: center; gap: 12px; }
 .warn-top .pin-icon { width: 44px; height: 44px; }
@@ -134,10 +143,17 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 4px; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sheet-head h2 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 800; }
+.extra { display: grid; gap: 10px; }
+.extra summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink); padding: 4px 0; }
+.extra[open] summary { margin-bottom: 8px; }
+.extra label + label { margin-top: 10px; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .tile { border: 0; border-radius: 18px; padding: 16px 8px; text-align: center; line-height: 1.15; display: grid; justify-items: center; gap: 8px; color: var(--on-color); font-weight: 800; font-size: 16px; font-family: var(--display); }
 .tile svg { width: 44px; height: 44px; }
 .tile.police { background: var(--police); } .tile.goslow { background: var(--slow); } .tile.camera { background: var(--cam); }
+.tile.accident { background: var(--acc); } .tile.pothole { background: var(--hole); } .tile.flood { background: var(--flood); }
+.tile.robot { background: var(--robot); } .tile.breakdown { background: var(--brk); } .tile.protest { background: #27272a; color: #fff; }
+.tile svg { width: 36px; height: 36px; }
 .tile:disabled { opacity: .5; }
 .where { font-size: 14px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .where b { color: var(--ink); }
@@ -171,6 +187,8 @@ label .opt { font-weight: 400; color: var(--muted); }
 .pin-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); color: #fff; }
 .pin-icon svg { width: 22px; height: 22px; }
 .pin-icon.police { background: #1f4fb8; } .pin-icon.goslow { background: #c2410c; } .pin-icon.camera { background: #7a3fc4; }
+.pin-icon.accident { background: #c81e2e; } .pin-icon.pothole { background: #8a5a2b; } .pin-icon.flood { background: #0e7490; }
+.pin-icon.robot { background: #3f4652; } .pin-icon.breakdown { background: #b0175e; } .pin-icon.protest { background: #27272a; }
 .me { background: none; border: 0; }
 .me-dot { width: 26px; height: 26px; position: relative; }
 .me-dot i { position: absolute; inset: 4px; border-radius: 50%; background: #2f7cf6; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.4); }
@@ -182,6 +200,18 @@ label .opt { font-weight: 400; color: var(--muted); }
 .leaflet-popup-content { margin: 12px 14px; min-width: 220px; font-family: var(--body); font-size: 14px; }
 .pop { display: grid; gap: 8px; }
 
+/* Sponsor card */
+.sponsor { display: grid; grid-template-columns: auto 1fr auto; gap: 10px 12px; align-items: center; padding: 10px 12px; margin-bottom: 10px; border-radius: 14px;
+  background: var(--bg); border: 1px solid var(--line); position: relative; }
+.sponsor .sp-logo { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; background: var(--surface); }
+.sponsor .sp-body { min-width: 0; display: grid; gap: 1px; }
+.sponsor .sp-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sponsor .sp-name { font-family: var(--display); font-weight: 800; font-size: 16px; line-height: 1.15; overflow-wrap: anywhere; }
+.sponsor .sp-msg { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.sponsor .sp-code { justify-self: start; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1px dashed var(--muted); margin-top: 3px; }
+.sponsor .sp-cta { grid-column: 1 / -1; text-align: center; text-decoration: none; font-weight: 800; padding: 10px; border-radius: 10px; background: var(--ink); color: var(--bg); }
+.sponsor .sp-x { border: 0; background: transparent; color: var(--muted); font-size: 18px; width: 32px; height: 32px; align-self: start; }
+.sponsor.compact .sp-x { display: none; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bh) + 76px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 40; max-width: calc(100% - 32px); text-align: center; }
 @media (max-width: 370px) { .mic { width: 66px; height: 66px; } .turn-text b { font-size: 24px; } }
 </style>
@@ -213,6 +243,7 @@ label .opt { font-weight: 400; color: var(--muted); }
 </button>
 
 <div class="bottom" id="bottom">
+  <div id="sponsor-slot" hidden></div>
   <div class="eta" id="eta" hidden>
     <div><b id="eta-time"></b><span id="eta-info"></span></div>
     <button id="end-nav" type="button">End</button>
@@ -245,12 +276,21 @@ label .opt { font-weight: 400; color: var(--muted); }
     <div class="sheet-head"><h2>Wetin you see?</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
     <div class="where" id="r-where"></div>
     <label for="r-area" id="r-area-wrap">Which area?<select class="field" id="r-area"></select></label>
-    <label for="r-road">Which road or landmark? <span class="opt">(optional)</span><input class="field" id="r-road" maxlength="80" placeholder="e.g. Voortrekker Rd by Shoprite"></label>
-    <label for="r-note">Extra gist <span class="opt">(optional)</span><input class="field" id="r-note" maxlength="200" placeholder="e.g. Dem dey check licence"></label>
+    <details class="extra" id="r-extra">
+      <summary>Add road name or extra gist <span class="opt">(optional, before you tap)</span></summary>
+      <label for="r-road">Which road or landmark? <span class="opt">(optional)</span><input class="field" id="r-road" maxlength="80" placeholder="e.g. Voortrekker Rd by Shoprite"></label>
+      <label for="r-note">Extra gist <span class="opt">(optional)</span><input class="field" id="r-note" maxlength="200" placeholder="e.g. Dem dey check licence"></label>
+    </details>
     <div class="tiles">
       <button class="tile police" id="r-police" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>Police roadblock</button>
       <button class="tile goslow" id="r-goslow" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>Go-slow</button>
       <button class="tile camera" id="r-camera" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h2l1.3-1.6A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.2.6L16.5 5h2A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5zM12 16.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2.2a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>Speed camera</button>
+      <button class="tile accident" id="r-accident" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.4 5.6L20 6l-2.6 5.2L22 14l-5.8.6L15 21l-3-4.6L9 21l-1.2-6.4L2 14l4.6-2.8L4 6l5.6 1.6z"/></svg>Accident</button>
+      <button class="tile pothole" id="r-pothole" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.5 15c0-3 4.3-5.4 9.5-5.4s9.5 2.4 9.5 5.4-4.3 5.4-9.5 5.4-9.5-2.4-9.5-5.4z"/><path d="M7 4.5l1.6 3M17 4.5l-1.6 3M12 3v3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Pothole</button>
+      <button class="tile flood" id="r-flood" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 8c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0M2 13.5c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0M2 19c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Flood</button>
+      <button class="tile robot" id="r-robot" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2h4a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm2 2.6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Traffic light off</button>
+      <button class="tile breakdown" id="r-breakdown" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 2.5L1.5 21h21zM11 9h2v6.5h-2zm0 8h2v2h-2z"/></svg>Car breakdown</button>
+      <button class="tile protest" id="r-protest" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l6 4.5V4L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Protest or unrest</button>
     </div>
     <p class="small" style="margin:0">Tap one to send. Mount your phone; no type while you dey drive.</p>
   </div>
@@ -265,6 +305,8 @@ label .opt { font-weight: 400; color: var(--muted); }
       <button class="chip" data-f="police" aria-pressed="false" type="button">Police</button>
       <button class="chip" data-f="goslow" aria-pressed="false" type="button">Go-slow</button>
       <button class="chip" data-f="camera" aria-pressed="false" type="button">Camera</button>
+      <button class="chip" data-f="accident" aria-pressed="false" type="button">Accident</button>
+      <button class="chip" data-f="hazard" aria-pressed="false" type="button">Pothole, flood, protest, more</button>
     </div>
     <div class="feed" id="feed"></div>
     <p class="small" style="margin:0">Police report go off after 2 hours, go-slow after 1 hour, unless person confirm say e still dey.</p>
@@ -281,7 +323,9 @@ const CONFIG = {
   SUPABASE_URL: "https://iqniyhsnzsxehjzsllvl.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ",
   // Map, search and directions. Leave empty to use the free public servers only.
-  GEOAPIFY_KEY: "754ad2a4ea5e44d1af49f45de9a41462"
+  GEOAPIFY_KEY: "754ad2a4ea5e44d1af49f45de9a41462",
+  // Where your voice clips live on GitHub (owner/repo). Keeps working on your own web address.
+  GITHUB_REPO: "uluemeamos-cmyk/road-gist"
 };
 </script>
 <script>
@@ -376,8 +420,14 @@ const ROAD_ALIASES = [
   ["east ?-? ?west road", "East-West Rd"], ["aba road", "Aba Rd"], ["ikwerre road|ikwere road", "Ikwerre Rd"],
   ["airport road", "Airport Rd"]
 ];
-const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police|warden)|officers?|soldier|soldiers|army|lastma|last ma|frsc|f r s c|road safety|vio|v i o|mopol|mobile police|npf|customs|task force|patrol|speed trap|speed check|speed gun)\b/;
-const GOSLOW_RX = /\b(go ?slow|go-slow|traffic|jam|hold ?up|holdup|accident|crash|standstill|stand still|no dey move|e no dey move|stuck|congestion|gridlock|breakdown|broke down|broken down|tanker|trailer|flood|flooded|flooding)\b/;
+const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police|warden)|officers?|soldier|soldiers|army|lastma|last ma|frsc|f r s c|road safety|vio|v i o|mopol|mobile police|npf|customs|task force|patrol|speed trap|speed check|speed gun|stop and search|stop-and-search|stop n search|dey search|searching cars|search motor|search car|search people)\b/;
+const GOSLOW_RX = /\b(go ?slow|go-slow|traffic|jam|hold ?up|holdup|standstill|stand still|no dey move|e no dey move|stuck|congestion|gridlock|tanker|trailer)\b/;
+const ACCIDENT_RX = /\b(accident|accidents|crash|crashed|collision|smash|don jam|jam another|jam am|knock down|tanker fall|trailer fall|motor fall|somersault|overturn|overturned)\b/;
+const POTHOLE_RX = /\b(pothole|potholes|pot hole|pot holes|port hole|porthole|big hole|hole for road|bad road|road don spoil|road bad)\b/;
+const FLOOD_RX = /\b(flood|flooded|flooding|floods|water don cover|water cover road|water full road|water dey road)\b/;
+const ROBOT_RX = /\b(robots?|traffic lights?)\b.{0,30}\b(off|out|down|not working|no dey work|no work|spoil|dead|broken|no light)\b|\bno light for (?:the )?junction\b/;
+const PROTEST_RX = /\b(protest|protests|protester|protesters|riot|riots|rioting|unrest|demonstration|demonstrators|march|marching|strike|burning tyres|burning tires|burn tyres|burn tires|tyre dey burn|tire dey burn|shutdown|looting)\b/;
+const BREAKDOWN_RX = /\b(breakdown|break down|broke down|broken down|car don spoil|motor don spoil|truck don spoil|bus don spoil|stalled|tyre burst|tire burst|flat tyre|flat tire)\b/;
 const YES_RX = /\b(yes|yeah|yah|yep|yup|ya|ja|sure|ok|okay|correct|na so|drop am|drop it|send|go ahead|do am|confirm|right|make we go|oya|let's go|lets go)\b/;
 const NO_RX = /\b(no|nope|cancel|wrong|comot|leave am|stop)\b/;
 const ASK_RX = /\b(wetin dey|wetin happen|any wahala|what'?s happening|what is happening|read|update|how road|how the road|how traffic|tell me)\b/;
@@ -386,7 +436,19 @@ const STOP_RX = /\b(?:stop|end|cancel)\b.*\b(?:navigation|navigating|direction|d
 
 function norm(t) { return (" " + String(t || "").toLowerCase().replace(/[^a-z0-9' -]/g, " ").replace(/\s+/g, " ") + " "); }
 const CAMERA_RX = /\b(speed camera|speed cameras|speed cam|camera|cameras|flash camera|traffic camera|robot camera|camera dey flash)\b/;
-function detectType(t) { t = norm(t); if (CAMERA_RX.test(t)) return "camera"; if (POLICE_RX.test(t)) return "police"; if (GOSLOW_RX.test(t)) return "goslow"; return null; }
+function detectType(t) {
+  t = norm(t);
+  if (FLOOD_RX.test(t)) return "flood";
+  if (ROBOT_RX.test(t)) return "robot";
+  if (CAMERA_RX.test(t)) return "camera";
+  if (PROTEST_RX.test(t)) return "protest";
+  if (ACCIDENT_RX.test(t)) return "accident";
+  if (POLICE_RX.test(t)) return "police";
+  if (POTHOLE_RX.test(t)) return "pothole";
+  if (BREAKDOWN_RX.test(t)) return "breakdown";
+  if (GOSLOW_RX.test(t)) return "goslow";
+  return null;
+}
 function detectRoad(t) {
   t = norm(t);
   for (const [rx, name] of ROAD_ALIASES) { const m = t.match(new RegExp(rx)); if (m) return { road: name, rest: t.replace(m[0], " ") }; }
@@ -528,7 +590,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 </script>
 <script>
 (() => {
-  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3 };  // fixed speed cameras stay 30 days after the last "E still dey"
+  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3,   // cameras and potholes stay 30 days after the last "E still dey"
+    accident: 120 * 60e3, pothole: 30 * 86400e3, flood: 12 * 3600e3, robot: 6 * 3600e3, breakdown: 60 * 60e3, protest: 3 * 3600e3 };
+  const LONG_LIVED = ["camera", "pothole"];  // fixed speed cameras stay 30 days after the last "E still dey"
   const $ = (id) => document.getElementById(id);
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
   const DEVICE = ls.get("rg-device") || (() => { const id = "d" + Math.random().toString(36).slice(2) + Date.now().toString(36); ls.set("rg-device", id); return id; })();
@@ -571,7 +635,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       async add(r) { const rows = load(); rows.unshift({ id: "l" + Date.now(), ...r, createdAt: Date.now(), by: DEVICE, still: { [DEVICE]: Date.now() }, cleared: {} }); save(rows); await this.refresh(); return { queued: false }; },
       async confirm(id, kind) { const rows = load(); const r = rows.find(x => x.id === id); if (r) { r[kind] = r[kind] || {}; r[kind][DEVICE] = Date.now(); save(rows); } await this.refresh(); },
       start() { this.refresh(); },
-      async ping() {}
+      async ping() {},
+      async sponsors() { return []; },
+      async sponsorEvent() {}
     };
   }
   /* Offline helpers */
@@ -602,12 +668,12 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     let noCoords = false;
     return {
       async refresh() {
-        const since = new Date(Date.now() - 6 * 3600e3).toISOString();
+        const since = new Date(Date.now() - 24 * 3600e3).toISOString();
         if (!navigator.onLine) { netStatus(); return; }
         const { data: recent, error } = await sb.from("reports").select("*").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
         if (error) { netStatus(true); return; }
         const camSince = new Date(Date.now() - 90 * 86400e3).toISOString();
-        const { data: cams } = await sb.from("reports").select("*").eq("type", "camera").gte("created_at", camSince).order("created_at", { ascending: false }).limit(500);
+        const { data: cams } = await sb.from("reports").select("*").in("type", LONG_LIVED).gte("created_at", camSince).order("created_at", { ascending: false }).limit(500);
         const seenIds = new Set(recent.map(r => r.id));
         const reps = recent.concat((cams || []).filter(r => !seenIds.has(r.id)));
         const ids = reps.map(r => r.id);
@@ -661,6 +727,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         return { queued: false };
       },
       // Counts this phone once a day for the admin page (city only, no exact location)
+      async sponsors() { const { data, error } = await sb.from("sponsors").select("id,name,message,cta_label,link,code,logo_url,city"); if (error) throw error; return data || []; },
+      async sponsorEvent(id, kind) { await sb.rpc("rc_sponsor_event", { p_sponsor: id, p_kind: kind }); },
       async ping(city) { const { error } = await sb.rpc("rc_ping", { p_device: DEVICE, p_city: city }); if (error) throw error; },
       async confirm(id, kind, fromQueue) {
         if (String(id).startsWith("q")) return { queued: true };
@@ -706,7 +774,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (clears.some(([dev]) => dev === r.by)) return false;
     return clears.length < 2;
   }
-  const label = (t) => t === "police" ? "Police roadblock" : t === "camera" ? "Speed camera" : "Go-slow";
+  const LABELS = { police: "Police roadblock", goslow: "Go-slow", camera: "Speed camera", accident: "Accident", pothole: "Pothole", flood: "Flood", robot: "Traffic light off", breakdown: "Car breakdown", protest: "Protest or unrest" };
+  const label = (t) => LABELS[t] || "Report";
   const posOf = (r) => r.lat != null ? { lat: r.lat, lng: r.lng } : (AREA_CENTERS[r.area] ? { lat: AREA_CENTERS[r.area][0], lng: AREA_CENTERS[r.area][1] } : null);
   const activeList = () => reports.filter(isActive);
 
@@ -735,7 +804,15 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   const SHIELD = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>';
   const BARS = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>';
   const CAMERA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h2l1.3-1.6A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.2.6L16.5 5h2A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5zM12 16.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2.2a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>';
-  const typeIcon = (type) => type === "police" ? SHIELD : type === "camera" ? CAMERA : BARS;
+  const MORE_ICONS = {
+    protest: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l6 4.5V4L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    accident: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 5.6L20 6l-2.6 5.2L22 14l-5.8.6L15 21l-3-4.6L9 21l-1.2-6.4L2 14l4.6-2.8L4 6l5.6 1.6z"/></svg>',
+    pothole: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 15c0-3 4.3-5.4 9.5-5.4s9.5 2.4 9.5 5.4-4.3 5.4-9.5 5.4-9.5-2.4-9.5-5.4z"/><path d="M7 4.5l1.6 3M17 4.5l-1.6 3M12 3v3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    flood: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 8c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0M2 13.5c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0M2 19c2.5-2 4.5-2 7 0s4.5 2 7 0 4.5-2 6 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    robot: '<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M10 2h4a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm2 2.6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>',
+    breakdown: '<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2.5L1.5 21h21zM11 9h2v6.5h-2zm0 8h2v2h-2z"/></svg>'
+  };
+  const typeIcon = (type) => type === "police" ? SHIELD : type === "camera" ? CAMERA : MORE_ICONS[type] || BARS;
   const iconHtml = (type) => `<span class="pin-icon ${type}">${typeIcon(type)}</span>`;
   const pinIcon = (type) => L.divIcon({ className: "pin", html: iconHtml(type), iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20] });
 
@@ -848,6 +925,12 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     clearTimeout(warnTimer); warnTimer = setTimeout(() => $("warn").hidden = true, 20000);
     if (!busy) say(r.type === "police" ? [{ c: "police-ahead", t: `Police roadblock dey ${sayDist(dist)} ahead. Make sure your papers complete, and drive jeje.` }]
       : r.type === "camera" ? [{ c: "camera-ahead", t: `Speed camera dey ${sayDist(dist)} ahead. Check your speed.` }]
+      : r.type === "accident" ? [{ c: "accident-ahead", t: `Accident dey ${sayDist(dist)} ahead. Slow down, drive jeje.` }]
+      : r.type === "pothole" ? [{ c: "pothole-ahead", t: `Pothole dey ${sayDist(dist)} ahead. Take am easy o.` }]
+      : r.type === "flood" ? [{ c: "flood-ahead", t: `Water don cover road ${sayDist(dist)} ahead. Abeg no drive enter am.` }]
+      : r.type === "robot" ? [{ c: "robot-ahead", t: `Traffic light no dey work ${sayDist(dist)} ahead. Drive careful for the junction.` }]
+      : r.type === "protest" ? [{ c: "protest-ahead", t: `Protest dey ${sayDist(dist)} ahead. Road fit block, find another road if you fit.` }]
+      : r.type === "breakdown" ? [{ c: "breakdown-ahead", t: `Car don spoil for road ${sayDist(dist)} ahead. Watch am.` }]
       : [{ c: "goslow-ahead", t: `Go-slow dey ${sayDist(dist)} ahead. Take am easy.` }]);
   }
   $("warn-still").onclick = () => { if (warnFor) vote(warnFor.id, "still"); $("warn").hidden = true; };
@@ -908,17 +991,15 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     let area, pos = reportPos;
     if (pos) area = await placeName(pos);
     else { area = $("r-area").value; if (!area) { toast("Abeg choose the area."); return; } const c = AREA_CENTERS[area]; pos = { lat: c[0], lng: c[1] }; }
-    $("r-police").disabled = $("r-goslow").disabled = $("r-camera").disabled = true;
+    const tilesEls = document.querySelectorAll(".tiles .tile"); tilesEls.forEach(t => t.disabled = true);
     try {
       const res = await store.add({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
       ls.set("rg-myarea", area); closeSheets(); toast(res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
     } catch (e) { toast(rcMessage(e)); }
-    finally { $("r-police").disabled = $("r-goslow").disabled = $("r-camera").disabled = false; }
+    finally { tilesEls.forEach(t => t.disabled = false); }
   }
   $("btn-report").onclick = openReport;
-  $("r-police").onclick = () => sendTyped("police");
-  $("r-goslow").onclick = () => sendTyped("goslow");
-  $("r-camera").onclick = () => sendTyped("camera");
+  document.querySelectorAll(".tiles .tile").forEach(t => t.onclick = () => sendTyped(t.id.slice(2)));
 
   /* ===== 8. Alerts list ===== */
   let filterType = "all";
@@ -933,7 +1014,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   function renderList() {
     const feed = $("feed"); feed.replaceChildren();
-    const list = sortedByNear(activeList().filter(r => filterType === "all" || r.type === filterType));
+    const sp = pickSponsor(true); if (sp) feed.append(sponsorCard(sp, true));
+    const HAZ = ["pothole", "flood", "robot", "breakdown", "protest"];
+    const list = sortedByNear(activeList().filter(r => filterType === "all" || r.type === filterType || (filterType === "hazard" && HAZ.includes(r.type))));
     if (!list.length) { feed.innerHTML = '<div class="empty"><b>Road free for now</b><span>Nobody don report anything. If you see police or go-slow, tap Report or talk am.</span></div>'; return; }
     for (const r of list) feed.append(cardFor(r));
   }
@@ -1031,8 +1114,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (j.code !== "Ok" || !j.routes || !j.routes.length) throw new Error("no route");
     return j.routes.map(buildRoute);
   }
+  const AVOID = ["police", "goslow", "accident", "flood", "protest"];
   function reportsOn(route, cameras = false) {
-    return activeList().filter(r => r.lat != null && (r.type === "camera") === cameras && projectOnRoute(route, { lat: r.lat, lng: r.lng }, -1).d < 60);
+    return activeList().filter(r => r.lat != null && (cameras ? r.type === "camera" : AVOID.includes(r.type)) && projectOnRoute(route, { lat: r.lat, lng: r.lng }, -1).d < 60);
   }
   function pickRoute(routes) {
     // Like Waze: prefer the road with fewer roadblocks if it costs at most a few extra minutes
@@ -1058,7 +1142,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     destMarker = L.marker([dest.lat, dest.lng], { icon: L.divIcon({ className: "pin", html: '<span class="dest-pin"></span>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(map);
     map.fitBounds(L.latLngBounds(best.coords.map(c => [c.lat, c.lng])), { paddingTopLeft: [30, 120], paddingBottomRight: [30, 200] });
     setTimeout(() => { follow = true; $("recenter").hidden = true; if (nav && me) map.setView([me.lat, me.lng], 17); }, 3500);
-    $("search-form").hidden = true; $("eta").hidden = false; $("turn").hidden = false;
+    $("search-form").hidden = true; $("eta").hidden = false; $("turn").hidden = false; hideSponsor();
     $("q").value = ""; $("q-clear").hidden = true; $("brand").hidden = false;
     keepScreenOn();
     for (const s of best.steps) { s.a0 = s.a1 = s.a2 = false; }
@@ -1166,18 +1250,18 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (sub !== undefined) $("talk-sub").textContent = sub;
   }
   /* --- Your own recorded voice clips (voice folder on GitHub). Any clip not found uses the phone voice. --- */
-  const VOICE_KEYS = ["camera-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
+  const VOICE_KEYS = ["camera-ahead","accident-ahead","pothole-ahead","flood-ahead","robot-ahead","breakdown-ahead","protest-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
   const vnorm = (s) => String(s).toLowerCase().replace(/\.(m4a|mp3|wav|aac|caf|mp4|ogg)$/, "").replace(/[^a-z0-9]/g, "");
   const clipUrl = {};
   const player = new Audio(); player.preload = "auto";
   let playerUnlocked = false;
   async function loadClips() {
-    const base = `https://api.github.com/repos/${location.hostname.split(".")[0]}/${location.pathname.split("/").filter(Boolean)[0] || ""}/contents/`;
+    const base = `https://api.github.com/repos/${CONFIG.GITHUB_REPO}/contents/`;
     const cacheKey = "rg-voice-list";
     let files = null;
     let stale = null;
     try { const c = JSON.parse(ls.get(cacheKey) || "null"); if (c) { stale = c.files; if (Date.now() - c.t < 3600e3) files = c.files; } } catch {}
-    if (!files && /github\.io$/.test(location.hostname)) {
+    if (!files && CONFIG.GITHUB_REPO) {
       files = [];
       for (const dir of ["voice", ""]) {
         try {
@@ -1391,6 +1475,61 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       ls.set("rg-a2hs", "1");
     }, 4000);
   }
+
+  /* ===== Sponsors: shown now and then, never while following directions ===== */
+  let sponsors = [];
+  try { sponsors = JSON.parse(ls.get("rg-sponsors") || "[]"); } catch {}
+  const today = () => new Date().toLocaleDateString("en-CA");
+  const safeLink = (u) => /^https:\/\/[^\s"'<>]+$/i.test(u || "") ? u : "";
+  const safeLogo = (u) => /^https:\/\/[^\s"'<>]+$/i.test(u || "") || /^[\w\-./]+\.(png|jpe?g|webp|gif|svg)$/i.test(u || "") ? u : "";
+  async function loadSponsors() {
+    try { sponsors = await store.sponsors(); ls.set("rg-sponsors", JSON.stringify(sponsors)); } catch {}
+  }
+  function pickSponsor(anyTime) {
+    const mine = sponsors.filter(s => !s.city || s.city === curCity);
+    const ready = anyTime ? mine : mine.filter(s => Date.now() - +(ls.get("rg-sp-shown-" + s.id) || 0) > 4 * 3600e3);
+    return ready.length ? ready[Math.floor(Math.random() * ready.length)] : null;
+  }
+  function countSponsor(s, kind) {
+    const key = `rg-sp-${kind}-${s.id}`, [day, n] = (ls.get(key) || "").split("|");
+    const count = day === today() ? +n || 0 : 0;
+    if (count >= (kind === "view" ? 1 : 3)) return;   // one view and up to three taps per phone per day
+    ls.set(key, today() + "|" + (count + 1));
+    store.sponsorEvent(s.id, kind).catch(() => {});
+  }
+  function sponsorCard(s, compact) {
+    const el = document.createElement("div"); el.className = "sponsor" + (compact ? " compact" : "");
+    const logo = safeLogo(s.logo_url);
+    if (logo) { const img = document.createElement("img"); img.className = "sp-logo"; img.alt = ""; img.src = logo; img.onerror = () => img.remove(); el.append(img); }
+    else el.append(document.createElement("span"));
+    const body = document.createElement("div"); body.className = "sp-body";
+    const tag = document.createElement("span"); tag.className = "sp-tag"; tag.textContent = "Sponsored";
+    const name = document.createElement("b"); name.className = "sp-name"; name.textContent = s.name;
+    const msg = document.createElement("span"); msg.className = "sp-msg"; msg.textContent = s.message;
+    body.append(tag, name, msg);
+    if (s.code) { const c = document.createElement("span"); c.className = "sp-code"; c.textContent = "Code: " + s.code; body.append(c); }
+    el.append(body);
+    const x = document.createElement("button"); x.type = "button"; x.className = "sp-x"; x.setAttribute("aria-label", "Close"); x.textContent = "✕"; x.onclick = hideSponsor; el.append(x);
+    const link = safeLink(s.link);
+    if (link) {
+      const a = document.createElement("a"); a.className = "sp-cta"; a.href = link; a.target = "_blank"; a.rel = "noopener sponsored";
+      a.textContent = s.cta_label || "Find out more"; a.onclick = () => countSponsor(s, "tap"); el.append(a);
+    }
+    countSponsor(s, "view");
+    return el;
+  }
+  let sponsorTimer = null;
+  function hideSponsor() { clearTimeout(sponsorTimer); $("sponsor-slot").hidden = true; $("sponsor-slot").replaceChildren(); }
+  function maybeShowSponsor() {
+    if (nav || busy || !$("confirm").hidden || document.hidden) return;
+    const s = pickSponsor(false); if (!s) return;
+    ls.set("rg-sp-shown-" + s.id, String(Date.now()));
+    $("sponsor-slot").replaceChildren(sponsorCard(s, false)); $("sponsor-slot").hidden = false;
+    clearTimeout(sponsorTimer); sponsorTimer = setTimeout(hideSponsor, 25000);
+  }
+  loadSponsors().then(() => setTimeout(maybeShowSponsor, 10000));
+  setInterval(loadSponsors, 30 * 60e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeShowSponsor, 8000); });
 
   /* ===== 13. Start ===== */
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
