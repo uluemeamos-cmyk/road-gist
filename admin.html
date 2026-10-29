@@ -111,6 +111,13 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
 .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
 .pill.on { background: var(--ok-soft); color: var(--ok); } .pill.off { background: var(--line); color: var(--muted); }
 @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+.rv-bar { display: grid; grid-template-columns: 34px 1fr 34px; gap: 8px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rv-bar i { display: block; height: 8px; border-radius: 4px; background: var(--gold); }
+.rv-bar div { background: var(--line); border-radius: 4px; overflow: hidden; }
+.rv-item { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+.rv-item:last-child { border-bottom: 0; }
+.rv-item .st { color: var(--gold); letter-spacing: 2px; font-size: 16px; }
+.rv-item p { margin: 0; overflow-wrap: anywhere; }
 .empty { text-align: center; padding: 24px 12px; border: 2px dashed var(--line); border-radius: 14px; color: var(--muted); }
 .blocked-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .blocked-row:last-child { border-bottom: 0; }
@@ -150,6 +157,14 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
         <div><h3>Last 14 days</h3><table class="tbl" id="u-days"></table></div>
       </div>
       <p class="small" id="u-note" style="margin:0">Each phone counts once a day. Only the city is recorded, never the exact location.</p>
+    </div>
+
+    <div class="card" id="reviews">
+      <h2>Reviews</h2>
+      <div class="row"><span id="rv-avg" style="font-family:var(--display);font-size:28px;font-weight:800">–</span><span class="small" id="rv-count"></span></div>
+      <div id="rv-bars" style="display:grid;gap:4px"></div>
+      <p class="small" style="margin:0">Tap "Show in app" on good reviews to display them under "Wetin people dey talk" when users open the rating screen.</p>
+      <div id="rv-list"></div>
     </div>
 
     <div class="card" id="sponsors">
@@ -271,10 +286,45 @@ const CONFIG = {
     const byId = Object.fromEntries(reports.map(r => [r.id, r]));
     for (const c of cons) { const r = byId[c.report_id]; if (r) r[c.kind][c.device_id] = Math.max(r[c.kind][c.device_id] || 0, Date.parse(c.created_at)); }
     render(); renderBlocked(bl || []);
-    loadUsers(); loadSponsors();
+    loadUsers(); loadSponsors(); loadReviews();
     $("refresh").disabled = false;
   }
   const CITY_NAMES = {"capetown": "Cape Town", "johannesburg": "Johannesburg", "pretoria": "Pretoria", "durban": "Durban", "gqeberha": "Gqeberha", "eastlondon": "East London", "bloemfontein": "Bloemfontein", "polokwane": "Polokwane", "mbombela": "Mbombela", "pietermaritzburg": "Pietermaritzburg", "rustenburg": "Rustenburg", "kimberley": "Kimberley", "george": "George", "lagos": "Lagos", "abuja": "Abuja", "ph": "Port Harcourt", "ibadan": "Ibadan", "kano": "Kano", "benin": "Benin City", "enugu": "Enugu", "onitsha": "Onitsha", "asaba": "Asaba", "owerri": "Owerri", "aba": "Aba", "warri": "Warri", "uyo": "Uyo", "calabar": "Calabar", "kaduna": "Kaduna", "jos": "Jos", "abeokuta": "Abeokuta", "ilorin": "Ilorin", "akure": "Akure", "osogbo": "Osogbo", "maiduguri": "Maiduguri", "sokoto": "Sokoto", "za": "All of South Africa", "ng": "All of Nigeria", "other": "Other places", "unknown": "Location off"};
+  /* ---- Reviews ---- */
+  async function loadReviews() {
+    const { data, error } = await sb.from("app_reviews").select("*").order("created_at", { ascending: false }).limit(500);
+    if (error) { $("rv-count").textContent = "Reviews need the reviews.sql update in Supabase."; return; }
+    const n = data.length, avg = n ? data.reduce((a, r) => a + r.rating, 0) / n : 0;
+    $("rv-avg").textContent = n ? avg.toFixed(1) + " ★" : "No reviews yet";
+    $("rv-count").textContent = n ? `${n} review${n === 1 ? "" : "s"}` : "";
+    const bars = $("rv-bars"); bars.replaceChildren();
+    if (n) for (let v = 5; v >= 1; v--) {
+      const c = data.filter(r => r.rating === v).length;
+      const row = document.createElement("div"); row.className = "rv-bar";
+      const l = document.createElement("span"); l.textContent = v + " ★";
+      const track = document.createElement("div"); const fill = document.createElement("i"); fill.style.width = (100 * c / n) + "%"; track.append(fill);
+      const r = document.createElement("span"); r.textContent = c; r.style.textAlign = "right";
+      row.append(l, track, r); bars.append(row);
+    }
+    const box = $("rv-list"); box.replaceChildren();
+    for (const rv of data.slice(0, 100)) {
+      const it = document.createElement("div"); it.className = "rv-item";
+      const st = document.createElement("span"); st.className = "st"; st.textContent = "★".repeat(rv.rating) + "☆".repeat(5 - rv.rating);
+      const p = document.createElement("p"); p.textContent = rv.comment || "(no comment)"; if (!rv.comment) p.className = "small";
+      const meta = document.createElement("span"); meta.className = "small";
+      meta.textContent = [new Date(rv.created_at).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }), CITY_NAMES[rv.city] || rv.city, rv.phone, "Phone " + shortId(rv.device_id), rv.featured ? "Showing in app" : ""].filter(Boolean).join(" · ");
+      const acts = document.createElement("div"); acts.className = "acts";
+      const f = document.createElement("button"); f.type = "button"; f.textContent = rv.featured ? "Hide from app" : "Show in app";
+      f.onclick = async () => { f.disabled = true; const { error } = await sb.from("app_reviews").update({ featured: !rv.featured }).eq("id", rv.id); if (error) toast("Could not change: " + error.message); loadReviews(); };
+      const d = document.createElement("button"); d.type = "button"; d.className = "del"; d.textContent = "Delete";
+      d.onclick = () => {
+        if (d.dataset.sure) { sb.from("app_reviews").delete().eq("id", rv.id).then(({ error }) => { if (error) toast("Could not delete: " + error.message); loadReviews(); }); return; }
+        d.dataset.sure = "1"; d.textContent = "Tap again to delete"; setTimeout(() => { delete d.dataset.sure; d.textContent = "Delete"; }, 4000);
+      };
+      acts.append(f, d); it.append(st, p, meta, acts); box.append(it);
+    }
+  }
+
   /* ---- Sponsors ---- */
   const CITY_LABEL = CITY_NAMES;
   async function loadSponsors() {

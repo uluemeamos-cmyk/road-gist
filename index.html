@@ -22,7 +22,8 @@
   --bg: #f3f1ec; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcd8cf;
   --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
   --acc: #c81e2e; --acc-soft: #fde7e9; --hole: #8a5a2b; --hole-soft: #f4ebe1; --flood: #0e7490; --flood-soft: #dff2f7;
-  --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee;: #f5b301; --ok: #18794e; --ok-soft: #e1f3ea; --route: #2f7cf6; --on-color: #ffffff;
+  --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee;
+  --sign: #f5b301; --ok: #18794e; --ok-soft: #e1f3ea; --route: #2f7cf6; --on-color: #ffffff;
   --shadow: 0 6px 24px rgba(0,0,0,.18);
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -200,6 +201,25 @@ label .opt { font-weight: 400; color: var(--muted); }
 .leaflet-popup-content { margin: 12px 14px; min-width: 220px; font-family: var(--body); font-size: 14px; }
 .pop { display: grid; gap: 8px; }
 
+/* Travel mode picker */
+.modes { display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.results .modes .chip { flex: none; display: inline-block; width: auto; padding: 7px 12px; border: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; }
+.results .modes .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+/* Reviews */
+.stars { display: flex; gap: 6px; justify-content: center; }
+.stars button { border: 0; background: transparent; font-size: 40px; line-height: 1; color: var(--line); padding: 2px 4px; }
+.stars button[aria-pressed="true"] { color: var(--sign); }
+.rev-text { width: 100%; min-height: 84px; resize: vertical; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.rev-send { border: 0; border-radius: 12px; padding: 14px; font-weight: 800; background: var(--ink); color: var(--bg); }
+.rev-send:disabled { opacity: .5; }
+.quote { border-left: 4px solid var(--sign); padding: 6px 12px; display: grid; gap: 2px; }
+.quote b { color: var(--sign); letter-spacing: 1px; }
+.quote span { font-size: 14px; overflow-wrap: anywhere; }
+.quote small { font-size: 12px; color: var(--muted); }
+.linkish { border: 0; background: transparent; color: var(--police); font-weight: 700; padding: 6px 0; justify-self: start; }
+.ask { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 10px 12px; margin-bottom: 10px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; }
+.ask button { border-radius: 10px; padding: 8px 12px; font-weight: 700; border: 1px solid var(--line); background: var(--surface); }
+.ask .yes { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 /* Sponsor card */
 .sponsor { display: grid; grid-template-columns: auto 1fr auto; gap: 10px 12px; align-items: center; padding: 10px 12px; margin-bottom: 10px; border-radius: 14px;
   background: var(--bg); border: 1px solid var(--line); position: relative; }
@@ -310,6 +330,25 @@ label .opt { font-weight: 400; color: var(--muted); }
     </div>
     <div class="feed" id="feed"></div>
     <p class="small" style="margin:0">Police report go off after 2 hours, go-slow after 1 hour, unless person confirm say e still dey.</p>
+    <button class="linkish" id="open-review" type="button">Rate Road Clear</button>
+  </div>
+</section>
+
+<section class="sheet" id="sheet-review" hidden aria-label="Rate Road Clear">
+  <div class="sheet-inner">
+    <div class="grab"></div>
+    <div class="sheet-head"><h2>How you see Road Clear?</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="stars" id="stars" role="group" aria-label="Your rating">
+      <button type="button" data-v="1" aria-label="1 star" aria-pressed="false">★</button><button type="button" data-v="2" aria-label="2 stars" aria-pressed="false">★</button><button type="button" data-v="3" aria-label="3 stars" aria-pressed="false">★</button><button type="button" data-v="4" aria-label="4 stars" aria-pressed="false">★</button><button type="button" data-v="5" aria-label="5 stars" aria-pressed="false">★</button>
+    </div>
+    <label for="rev-text">Wetin you like, and wetin we fit do better? <span class="opt">(optional)</span>
+      <textarea class="rev-text" id="rev-text" maxlength="500" placeholder="e.g. E warn me before police for Voortrekker Road. Abeg add..."></textarea>
+    </label>
+    <button class="rev-send" id="rev-send" type="button" disabled>Send</button>
+    <div id="rev-featured" hidden style="display:grid;gap:10px">
+      <h2 style="margin:6px 0 0;font-family:var(--display);font-size:18px">Wetin people dey talk</h2>
+      <div id="rev-list" style="display:grid;gap:10px"></div>
+    </div>
   </div>
 </section>
 
@@ -502,7 +541,21 @@ const BREAKDOWN_RX = /\b(breakdown|break down|broke down|broken down|car don spo
 const YES_RX = /\b(yes|yeah|yah|yep|yup|ya|ja|sure|ok|okay|correct|na so|drop am|drop it|send|go ahead|do am|confirm|right|make we go|oya|let's go|lets go)\b/;
 const NO_RX = /\b(no|nope|cancel|wrong|comot|leave am|stop)\b/;
 const ASK_RX = /\b(wetin dey|wetin happen|any wahala|what'?s happening|what is happening|read|update|how road|how the road|how traffic|tell me)\b/;
-const NAV_RX = /\b(?:carry me go|carry me to|take me go|take me to|navigate to|navigate|direct me go|direct me to|show me road go|show me the way to|i dey go|i wan go|i want to go to|drive me go|drive me to|go to)\s+(.+)$/;
+const NAV_RX = /\b(?:carry me go|carry me to|take me go|take me to|navigate to|navigate|direct me go|direct me to|show me road go|show me the way to|i dey go|i wan go|i want to go to|drive me go|drive me to|i dey waka go|make i waka go|waka go|walk to|walk go|ride go|ride to|go to)\s+(.+)$/;
+// Travel modes (Geoapify names) and the words that pick them in voice
+const MODES = { drive: "Car", motorcycle: "Okada / bike", truck: "Truck", bus: "Bus / taxi", walk: "Waka", bicycle: "Bicycle" };
+const MODE_WORDS = [
+  [/\b(?:by|on|with|for)\s+(?:okada|motorbike|motor bike|motorcycle|bike|machine|scooter)\b|\bokada\b/, "motorcycle"],
+  [/\b(?:by|on|with)\s+(?:foot|leg|legs)\b|\bwaka\b|\bwalking\b|\bwalk to\b|\bwalk go\b/, "walk"],
+  [/\b(?:by|with|for)\s+(?:truck|lorry|trailer|tipper)\b/, "truck"],
+  [/\b(?:by|with|for)\s+(?:bus|danfo|taxi|kombi|minibus)\b/, "bus"],
+  [/\b(?:by|on|with)\s+(?:bicycle|cycle)\b/, "bicycle"]
+];
+function detectMode(t) { t = norm(t); for (const [rx, m] of MODE_WORDS) if (rx.test(t)) return m; return null; }
+function stripMode(q) {
+  return q.replace(/\b(?:by|on|with|for)\s+(?:okada|motorbike|motor bike|motorcycle|bike|machine|scooter|foot|leg|legs|truck|lorry|trailer|tipper|bus|danfo|taxi|kombi|minibus|bicycle|cycle)\b/g, "")
+          .replace(/\b(?:waka|walking)\b/g, "").replace(/\s+/g, " ").trim();
+}
 const STOP_RX = /\b(?:stop|end|cancel)\b.*\b(?:navigation|navigating|direction|directions|trip|journey)\b|\bstop navigat|\bwe don reach\b/;
 
 function norm(t) { return (" " + String(t || "").toLowerCase().replace(/[^a-z0-9' -]/g, " ").replace(/\s+/g, " ") + " "); }
@@ -547,7 +600,7 @@ function countryOf(p) {
   for (const [k, c] of Object.entries(COUNTRIES)) { const [x1, y1, x2, y2] = c.bbox.split(",").map(Number); if (p.lng >= x1 && p.lng <= x2 && p.lat >= y1 && p.lat <= y2) return k; }
   return null;
 }
-function parseNav(text) { const m = norm(text).trim().match(NAV_RX); return m ? m[1].replace(/\b(please|abeg|now)\b/g, "").trim() : null; }
+function parseNav(text) { const m = norm(text).trim().match(NAV_RX); return m ? stripMode(m[1].replace(/\b(please|abeg|now)\b/g, " ")) || null : null; }
 // PARSER END
 
 // GEO START
@@ -715,6 +768,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       start() { this.refresh(); },
       async ping() {},
       async sponsors() { return []; },
+      async addReview() {},
+      async featuredReviews() { return []; },
       async sponsorEvent() {}
     };
   }
@@ -805,6 +860,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         return { queued: false };
       },
       // Counts this phone once a day for the admin page (city only, no exact location)
+      async addReview(row) { const { error } = await sb.from("app_reviews").insert(row); if (error) throw error; },
+      async featuredReviews() { const { data } = await sb.from("app_reviews").select("rating,comment,city,created_at").eq("featured", true).order("created_at", { ascending: false }).limit(10); return data || []; },
       async sponsors() { const { data, error } = await sb.from("sponsors").select("id,name,message,cta_label,link,code,logo_url,city"); if (error) throw error; return data || []; },
       async sponsorEvent(id, kind) { await sb.rpc("rc_sponsor_event", { p_sponsor: id, p_kind: kind }); },
       async ping(city) { const { error } = await sb.rpc("rc_ping", { p_device: DEVICE, p_city: city }); if (error) throw error; },
@@ -978,6 +1035,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (!me) return;
     for (const r of activeList()) {
       if (warned.has(r.id) || r.lat == null) continue;
+      if (r.type === "camera" && (travelMode === "walk" || travelMode === "bicycle")) continue;
       const p = { lat: r.lat, lng: r.lng };
       let ahead = null;
       if (nav) {
@@ -1156,7 +1214,15 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try { list = await geocode(q); } catch { if (seq === searchSeq) { $("results").innerHTML = '<div class="empty-row">Network wahala. Try again.</div>'; $("results").hidden = false; } return; }
     if (seq !== searchSeq) return;
     const box = $("results"); box.replaceChildren();
-    if (!list.length) { box.innerHTML = '<div class="empty-row">I no see that place. Try another name.</div>'; box.hidden = false; return; }
+    const modes = document.createElement("div"); modes.className = "modes"; modes.setAttribute("role", "group"); modes.setAttribute("aria-label", "How you dey travel");
+    for (const [m, name] of Object.entries(MODES)) {
+      const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = name;
+      c.setAttribute("aria-pressed", String(m === travelMode));
+      c.onclick = () => { setMode(m); modes.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c))); };
+      modes.append(c);
+    }
+    box.append(modes);
+    if (!list.length) { const e = document.createElement("div"); e.className = "empty-row"; e.textContent = "I no see that place. Try another name."; box.append(e); box.hidden = false; return; }
     for (const d of list) {
       const b = document.createElement("button"); b.type = "button";
       const t = document.createElement("b"); t.textContent = d.title; const s = document.createElement("span");
@@ -1170,12 +1236,14 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
   /* ===== 10. Navigation ===== */
   let nav = null, routeLayer = null, routeCasing = null, destMarker = null;
+  let travelMode = MODES[ls.get("rg-mode")] ? ls.get("rg-mode") : "drive";
+  function setMode(m) { if (MODES[m]) { travelMode = m; ls.set("rg-mode", m); } }
   async function fetchRoutes(a, b) {
     if (GEO_KEY) { try { return await fetchRoutesGeo(a, b); } catch {} }
     return fetchRoutesOsrm(a, b);
   }
   async function geoRoute(a, b, extra = "") {
-    const res = await fetch(`https://api.geoapify.com/v1/routing?waypoints=${a.lat},${a.lng}|${b.lat},${b.lng}&mode=drive&details=instruction_details&lang=en${extra}&apiKey=${GEO_KEY}`);
+    const res = await fetch(`https://api.geoapify.com/v1/routing?waypoints=${a.lat},${a.lng}|${b.lat},${b.lng}&mode=${travelMode}&details=instruction_details&lang=en${extra}&apiKey=${GEO_KEY}`);
     if (!res.ok) throw new Error("geoapify " + res.status);
     const f = ((await res.json()).features || [])[0];
     if (!f) throw new Error("no route");
@@ -1189,7 +1257,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try { return [first, await geoRoute(a, b, "&avoid=" + blocks.map(r => `location:${r.lat},${r.lng}`).join("|"))]; } catch { return [first]; }
   }
   async function fetchRoutesOsrm(a, b) {
-    const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
+    // Backup routing: foot and bicycle servers for walking and cycling, car server for everything else
+    const host = travelMode === "walk" ? "https://routing.openstreetmap.de/routed-foot" : travelMode === "bicycle" ? "https://routing.openstreetmap.de/routed-bike" : "https://router.project-osrm.org";
+    const url = `${host}/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
     const res = await fetch(url); const j = await res.json();
     if (j.code !== "Ok" || !j.routes || !j.routes.length) throw new Error("no route");
     return j.routes.map(buildRoute);
@@ -1216,7 +1286,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     let routes;
     try { routes = await fetchRoutes(me, dest); } catch { await say("I no fit find road go there now. Check your network and try again."); setTalk("idle", "Tap and talk", ""); return false; }
     const { best, avoided, n } = pickRoute(routes);
-    nav = { dest, route: best, idx: 0, off: 0, lastReroute: Date.now(), rerouting: false };
+    nav = { dest, route: best, idx: 0, off: 0, lastReroute: Date.now(), rerouting: false, mode: travelMode };
     drawRoute(best);
     if (destMarker) map.removeLayer(destMarker);
     destMarker = L.marker([dest.lat, dest.lng], { icon: L.divIcon({ className: "pin", html: '<span class="dest-pin"></span>', iconSize: [22, 22], iconAnchor: [11, 11] }) }).addTo(map);
@@ -1227,7 +1297,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     keepScreenOn();
     for (const s of best.steps) { s.a0 = s.a1 = s.a2 = false; }
     updateBanner(0, 0);
-    let intro = `${dest.title}. ${fmtDur(best.duration)}.`;
+    let intro = `${dest.title}. ${fmtDur(best.duration)}${travelMode === "drive" ? "" : " by " + ({ motorcycle: "okada", truck: "truck", bus: "bus", walk: "leg", bicycle: "bicycle" })[travelMode]}.`;
     if (avoided) intro += " I don choose road wey no get roadblock.";
     else if (n > 0) intro += ` ${n === 1 ? "One report dey" : n + " reports dey"} for this road. I go warn you when you near.`;
     const cams = reportsOn(best, true).length;
@@ -1260,7 +1330,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     $("turn-name").textContent = step.type === "arrive" ? (nav.dest.title) : (step.name || step.text);
     const secs = nav.route.duration * (remaining / nav.route.distance || 0);
     $("eta-time").textContent = fmtDur(secs);
-    $("eta-info").textContent = `${fmtDist(remaining)} · reach ${new Date(Date.now() + secs * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    $("eta-info").textContent = `${MODES[travelMode]} · ${fmtDist(remaining)} · reach ${new Date(Date.now() + secs * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   }
   function distPart(d) {
     const clip = [[1500, "in-1500"], [600, "in-600"], [400, "in-400"], [150, "in-150"]].find(([v]) => Math.abs(d - v) / v < 0.3);
@@ -1497,9 +1567,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
       if (STOP_RX.test(norm(heard))) { if (nav) { endNav(true); await say("Okay, I don stop the directions."); } else await say("We no dey navigate now."); return; }
 
-      let { type, road, area } = parseReport(heard, curCity);
-      const navQ = !type ? parseNav(heard) : null;
+      const navQ = parseNav(heard);
+      let { type, road, area } = navQ ? { type: null, road: "", area: null } : parseReport(heard, curCity);
       if (navQ) {
+        const spokenMode = detectMode(heard); if (spokenMode) setMode(spokenMode);
         let list = []; try { list = await geocode(navQ); } catch {}
         if (!list.length) { await say(`I no see ${navQ}. Try say am another way, or type am for search.`); return; }
         const d = list[0];
@@ -1555,6 +1626,56 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       ls.set("rg-a2hs", "1");
     }, 4000);
   }
+
+  /* ===== Reviews of Road Clear ===== */
+  let revStars = 0;
+  document.querySelectorAll("#stars button").forEach(b => b.onclick = () => {
+    revStars = +b.dataset.v;
+    document.querySelectorAll("#stars button").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.v <= revStars)));
+    $("rev-send").disabled = false;
+  });
+  async function openReview() {
+    openSheet("sheet-review");
+    ls.set("rg-rev-asked", "1");
+    const list = await store.featuredReviews().catch(() => []);
+    const box = $("rev-list"); box.replaceChildren();
+    for (const r of list) {
+      const q = document.createElement("div"); q.className = "quote";
+      const st = document.createElement("b"); st.textContent = "★".repeat(r.rating);
+      const t = document.createElement("span"); t.textContent = r.comment || "";
+      const sm = document.createElement("small"); sm.textContent = [CITIES[r.city] ? CITIES[r.city].name : "", new Date(r.created_at).toLocaleDateString([], { month: "short", year: "numeric" })].filter(Boolean).join(" · ");
+      q.append(st, t, sm); box.append(q);
+    }
+    $("rev-featured").hidden = !list.length;
+  }
+  $("open-review").onclick = openReview;
+  $("rev-send").onclick = async () => {
+    if (!revStars) return;
+    $("rev-send").disabled = true;
+    const ua = navigator.userAgent, phone = /iphone|ipad|ipod/i.test(ua) ? "iPhone" : /android/i.test(ua) ? "Android" : "Other";
+    try {
+      await store.addReview({ device_id: DEVICE, rating: revStars, comment: $("rev-text").value.trim().slice(0, 500) || null, city: (me && cityOf(me)) || curCity, phone });
+      ls.set("rg-rev-done", "1"); closeSheets(); $("rev-text").value = "";
+      toast(revStars >= 4 ? "Thank you! Abeg tell your people about Road Clear." : "Thank you. We go use am make Road Clear better.");
+    } catch (e) { toast(/RC_LIMIT/.test(errText(e)) ? "You don rate today already. Thank you!" : rcMessage(e)); $("rev-send").disabled = false; }
+  };
+  // Ask once, after someone has used the app on a few different days
+  (() => {
+    const day = new Date().toLocaleDateString("en-CA");
+    let days = []; try { days = JSON.parse(ls.get("rg-days") || "[]"); } catch {}
+    if (!days.includes(day)) { days.push(day); ls.set("rg-days", JSON.stringify(days.slice(-10))); }
+    if (days.length < 3 || ls.get("rg-rev-asked") || ls.get("rg-rev-done")) return;
+    setTimeout(() => {
+      if (nav || busy || !$("sponsor-slot").hidden || !$("confirm").hidden) return;
+      const ask = document.createElement("div"); ask.className = "ask";
+      const t = document.createElement("span"); t.textContent = "You don dey use Road Clear. How e dey work for you?";
+      const yes = document.createElement("button"); yes.type = "button"; yes.className = "yes"; yes.textContent = "Rate am";
+      const no = document.createElement("button"); no.type = "button"; no.textContent = "Later";
+      const close = () => { $("sponsor-slot").hidden = true; $("sponsor-slot").replaceChildren(); ls.set("rg-rev-asked", "1"); };
+      yes.onclick = () => { close(); openReview(); }; no.onclick = close;
+      ask.append(t, yes, no); $("sponsor-slot").replaceChildren(ask); $("sponsor-slot").hidden = false;
+    }, 30000);
+  })();
 
   /* ===== Sponsors: shown now and then, never while following directions ===== */
   let sponsors = [];
