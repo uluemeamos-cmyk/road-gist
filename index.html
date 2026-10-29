@@ -55,13 +55,14 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
   padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
   pointer-events: none; }
-.top > * { pointer-events: auto; max-width: 560px; width: 100%; margin: 0 auto; }
+.top { grid-template-columns: minmax(0, 1fr); }
+.top > * { pointer-events: auto; max-width: 560px; width: 100%; margin: 0 auto; min-width: 0; }
 .search { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 4px 6px 4px 14px; }
 .search svg { width: 20px; height: 20px; flex: none; color: var(--muted); }
 .search input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 12px 0; outline: none; }
 .search .brand { font-family: var(--display); font-weight: 800; font-size: 13px; background: var(--sign); color: #1b1d1a; padding: 4px 8px; border-radius: 8px; white-space: nowrap; }
 .icon-btn { border: 0; background: transparent; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
-.results { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; max-height: 50vh; overflow-y: auto; }
+.results { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; max-height: 64vh; overflow-y: auto; }
 .results button { display: grid; gap: 1px; width: 100%; text-align: left; border: 0; background: transparent; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .results button:last-child { border-bottom: 0; }
 .results b { font-weight: 700; }
@@ -201,6 +202,20 @@ label .opt { font-weight: 400; color: var(--muted); }
 .leaflet-popup-content { margin: 12px 14px; min-width: 220px; font-family: var(--body); font-size: 14px; }
 .pop { display: grid; gap: 8px; }
 
+/* Home, Work and nearby places */
+.quick { display: grid; gap: 0; }
+.saved-row { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+.results .saved-row button { border-bottom: 0; }
+.results .saved-row button + button { border-left: 1px solid var(--line); }
+.cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+.results .cats button { display: grid; justify-items: center; gap: 4px; padding: 10px 2px; border: 1px solid var(--line); border-radius: 12px; font-size: 11.5px; line-height: 1.2; font-weight: 600; text-align: center; background: var(--bg); min-width: 0; overflow-wrap: anywhere; }
+.cats svg { width: 22px; height: 22px; color: var(--route); }
+.results .pick { padding: 12px 16px; display: grid; gap: 8px; }
+.results .pick button { border: 1px solid var(--line); border-radius: 10px; text-align: center; font-weight: 700; }
+.results .res-head { padding: 10px 16px; font-weight: 800; font-family: var(--display); font-size: 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+.res-head span { font-family: var(--body); font-weight: 500; font-size: 13px; color: var(--muted); }
+.place-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--route); color: #fff; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.35); display: grid; place-items: center; font-size: 12px; font-weight: 800; font-family: var(--body); }
+@media (max-width: 360px) { .cats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 /* Travel mode picker */
 .modes { display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px; border-bottom: 1px solid var(--line); scrollbar-width: none; }
 .results .modes .chip { flex: none; display: inline-block; width: auto; padding: 7px 12px; border: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; }
@@ -551,6 +566,49 @@ const MODE_WORDS = [
   [/\b(?:by|with|for)\s+(?:bus|danfo|taxi|kombi|minibus)\b/, "bus"],
   [/\b(?:by|on|with)\s+(?:bicycle|cycle)\b/, "bicycle"]
 ];
+// Nearby places: key, label, Geoapify category, OpenStreetMap tag for the backup, words people use
+const CATS = [
+  ["fuel", "Petrol", "service.vehicle.fuel", "amenity=fuel", ["petrol", "petrol station", "petrol stations", "fuel", "fuel station", "filling station", "gas station", "garage"]],
+  ["food", "Food", "catering.restaurant", "amenity=restaurant", ["restaurant", "restaurants", "food", "chop", "buka", "place to eat", "mama put", "eat"]],
+  ["fastfood", "Fast food", "catering.fast_food", "amenity=fast_food", ["fast food", "chicken", "burger", "shawarma", "pizza"]],
+  ["coffee", "Coffee", "catering.cafe", "amenity=cafe", ["coffee", "cafe", "coffee shop"]],
+  ["hotel", "Hotels", "accommodation.hotel", "tourism=hotel", ["hotel", "hotels", "lodge", "guest house", "guesthouse", "place to sleep", "accommodation"]],
+  ["grocery", "Groceries", "commercial.supermarket", "shop=supermarket", ["supermarket", "supermarkets", "groceries", "grocery", "grocery store"]],
+  ["mall", "Shopping", "commercial.shopping_mall", "shop=mall", ["mall", "shopping mall", "shopping", "shopping centre", "shopping center", "plaza"]],
+  ["atm", "ATMs", "service.financial.atm", "amenity=atm", ["atm", "atms", "cash point", "cashpoint", "cash machine"]],
+  ["bank", "Banks", "service.financial.bank", "amenity=bank", ["bank", "banks"]],
+  ["pharmacy", "Pharmacy", "healthcare.pharmacy", "amenity=pharmacy", ["pharmacy", "chemist", "drug store"]],
+  ["hospital", "Hospital", "healthcare.hospital", "amenity=hospital", ["hospital", "clinic", "emergency"]],
+  ["policestation", "Police station", "service.police", "amenity=police", ["police station", "police stations"]],
+  ["parking", "Parking", "parking", "amenity=parking", ["parking", "car park", "parking lot", "place to park"]],
+  ["carwash", "Car wash", "service.vehicle.car_wash", "amenity=car_wash", ["car wash", "carwash"]],
+  ["mechanic", "Mechanic", "service.vehicle.repair", "shop=car_repair", ["mechanic", "vulcanizer", "vulcaniser", "tyre shop", "panel beater", "car repair"]],
+  ["toilet", "Toilets", "amenity.toilet", "amenity=toilets", ["toilet", "toilets", "bathroom", "restroom"]]
+];
+const PLACE_FILLER = /\b(?:the|a|an|any|one|some|nearest|closest|near me|nearby|near here|around here|close to me|wey dey near|for this area|please|abeg)\b/g;
+const PLACE_INTENT = /\b(?:near me|nearby|near here|around here|close to me|wey dey near|for this area|where i fit find|where i fit get|where i fit buy|where i go find|find me|show me|i need|i dey find|look for|nearest|closest)\b/;
+function catByPhrase(text) {
+  // longest matching phrase wins, so "police station" beats nothing and "fast food" beats "food"
+  let best = null, len = 0;
+  for (const c of CATS) for (const ph of c[4]) if (ph.length > len && new RegExp("\\b" + ph + "\\b").test(text)) { best = c[0]; len = ph.length; }
+  return best;
+}
+// Typed search like "petrol" or "ATM near me": search nearby places instead of a place called that
+function categoryFromQuery(q) {
+  const t = norm(q).replace(PLACE_FILLER, " ").replace(/\s+/g, " ").trim();
+  for (const c of CATS) if (c[4].includes(t)) return c[0];
+  return PLACE_INTENT.test(norm(q)) ? catByPhrase(norm(q)) : null;
+}
+// Voice: "petrol near me", "carry me go house", "take me to the nearest ATM"
+function placeIntent(text) {
+  const t = norm(text), navQ = parseNav(text);
+  const target = navQ ? navQ.replace(PLACE_FILLER, " ").replace(/\s+/g, " ").trim() : null;
+  if (target && /^(?:my )?(?:house|home|domot|yard|place)$/.test(target)) return { saved: "home" };
+  if (target && /^(?:my )?(?:work|office|job|work place|workplace)$/.test(target)) return { saved: "work" };
+  if (target) { for (const c of CATS) if (c[4].includes(target)) return { cat: c[0] }; }
+  if (PLACE_INTENT.test(t)) { const c = catByPhrase(t); if (c) return { cat: c }; }
+  return null;
+}
 function detectMode(t) { t = norm(t); for (const [rx, m] of MODE_WORDS) if (rx.test(t)) return m; return null; }
 function stripMode(q) {
   return q.replace(/\b(?:by|on|with|for)\s+(?:okada|motorbike|motor bike|motorcycle|bike|machine|scooter|foot|leg|legs|truck|lorry|trailer|tipper|bus|danfo|taxi|kombi|minibus|bicycle|cycle)\b/g, "")
@@ -1200,20 +1258,43 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     });
   }
   let searchT = null, searchSeq = 0;
+  $("q").addEventListener("focus", () => { if (!$("q").value.trim()) showQuick(); });
+  map.on("click", () => { if (!nav) { $("results").hidden = true; } });
   $("q").addEventListener("input", () => {
     const q = $("q").value.trim(); $("q-clear").hidden = !q; $("brand").hidden = !!q;
     clearTimeout(searchT);
+    if (!q) { showQuick(); return; }
     if (q.length < 3) { $("results").hidden = true; return; }
     searchT = setTimeout(() => runSearch(q), GEO_KEY ? 550 : 350);  // a little slower with Geoapify to save daily credits
   });
   $("search-form").addEventListener("submit", (e) => { e.preventDefault(); const q = $("q").value.trim(); if (q) runSearch(q); $("q").blur(); });
-  $("q-clear").onclick = () => { $("q").value = ""; $("q-clear").hidden = true; $("brand").hidden = false; $("results").hidden = true; };
+  $("q-clear").onclick = () => { $("q").value = ""; $("q-clear").hidden = true; $("brand").hidden = false; $("results").hidden = true; pendingSave = null; $("q").placeholder = "Where you dey go?"; placeLayer.clearLayers(); };
   async function runSearch(q) {
+    const cat = !pendingSave && categoryFromQuery(q);
+    if (cat) return showPlaces(cat);
     const seq = ++searchSeq;
     let list = [];
     try { list = await geocode(q); } catch { if (seq === searchSeq) { $("results").innerHTML = '<div class="empty-row">Network wahala. Try again.</div>'; $("results").hidden = false; } return; }
     if (seq !== searchSeq) return;
     const box = $("results"); box.replaceChildren();
+    if (!pendingSave) box.append(modeRow());
+    if (!list.length) { const e = document.createElement("div"); e.className = "empty-row"; e.textContent = "I no see that place. Try another name."; box.append(e); box.hidden = false; return; }
+    for (const d of list) {
+      const b = document.createElement("button"); b.type = "button";
+      const t = document.createElement("b"); t.textContent = d.title; const s = document.createElement("span");
+      s.textContent = [d.sub, me ? fmtDist(hav(me, d)) : ""].filter(Boolean).join(" · ");
+      b.append(t, s);
+      b.onclick = () => {
+        unlockSpeech(); $("results").hidden = true; $("q").blur();
+        if (pendingSave) { savePlace(pendingSave, d); return; }
+        startNav(d);
+      };
+      box.append(b);
+    }
+    box.hidden = false;
+  }
+
+  function modeRow() {
     const modes = document.createElement("div"); modes.className = "modes"; modes.setAttribute("role", "group"); modes.setAttribute("aria-label", "How you dey travel");
     for (const [m, name] of Object.entries(MODES)) {
       const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = name;
@@ -1221,17 +1302,138 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       c.onclick = () => { setMode(m); modes.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c))); };
       modes.append(c);
     }
-    box.append(modes);
-    if (!list.length) { const e = document.createElement("div"); e.className = "empty-row"; e.textContent = "I no see that place. Try another name."; box.append(e); box.hidden = false; return; }
-    for (const d of list) {
-      const b = document.createElement("button"); b.type = "button";
-      const t = document.createElement("b"); t.textContent = d.title; const s = document.createElement("span");
-      s.textContent = [d.sub, me ? fmtDist(hav(me, d)) : ""].filter(Boolean).join(" · ");
-      b.append(t, s);
-      b.onclick = () => { unlockSpeech(); $("results").hidden = true; $("q").blur(); startNav(d); };
-      box.append(b);
+    return modes;
+  }
+
+  /* ===== Home, Work and nearby places ===== */
+  let pendingSave = null;
+  const placeLayer = L.layerGroup().addTo(map);
+  const getSaved = (k) => { try { return JSON.parse(ls.get("rg-" + k) || "null"); } catch { return null; } };
+  const SAVED_NAME = { home: "Home", work: "Work" };
+  function savePlace(k, d) {
+    ls.set("rg-" + k, JSON.stringify({ title: SAVED_NAME[k], sub: [d.title, d.sub].filter(Boolean).join(", ").slice(0, 120), lat: d.lat, lng: d.lng }));
+    pendingSave = null; $("q").value = ""; $("q").placeholder = "Where you dey go?"; $("q-clear").hidden = true; $("brand").hidden = false;
+    toast(`${SAVED_NAME[k]} don save. Next time, just tap ${SAVED_NAME[k]} or say "carry me go ${k === "home" ? "house" : "work"}".`);
+  }
+  const ICON = (d) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${d}</svg>`;
+  const CAT_ICONS = {
+    fuel: '<path d="M4 3h9v18H4zM6 5v5h5V5zM15 8l3 3v7a1.5 1.5 0 0 0 3 0V9l-3-3-1 1"/>',
+    food: '<path d="M7 2v8a2 2 0 0 1-1 1.7V22H4V11.7A2 2 0 0 1 3 10V2h1v6h1V2h1v6h1V2zm9 0c2 0 4 2.5 4 7 0 2-1 3-2 3.5V22h-2z"/>',
+    fastfood: '<path d="M4 10h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2zm1-1c0-3.3 3.1-6 7-6s7 2.7 7 6zm-1 5h16v2a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/>',
+    coffee: '<path d="M3 8h14v6a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6zm14 1h1.5a2.5 2.5 0 0 1 0 5H17v-2h1.5a.5.5 0 0 0 0-1H17zM7 2h1v4H7zm3-1h1v5h-1zm3 1h1v4h-1z"/>',
+    hotel: '<path d="M2 5h2v8h18v6h-2v-3H4v3H2zm5 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm4 0h7a4 4 0 0 1 4 4H11z"/>',
+    grocery: '<path d="M3 4h2l2.6 10.4A2 2 0 0 0 9.5 16H18l2-8H7"/><circle cx="10" cy="20" r="1.6"/><circle cx="17" cy="20" r="1.6"/>',
+    mall: '<path d="M5 8h14l-1 13H6zm3 0V6a4 4 0 0 1 8 0v2h-2V6a2 2 0 0 0-4 0v2z"/>',
+    atm: '<path d="M2 6h20v12H2zm10 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>',
+    bank: '<path d="M12 2l10 5v2H2V7zM4 10h3v8H4zm6.5 0h3v8h-3zM17 10h3v8h-3zM2 19h20v3H2z"/>',
+    pharmacy: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>',
+    hospital: '<path d="M4 3h16v18H4zm6 4v3H7v4h3v3h4v-3h3v-4h-3V7z"/>',
+    policestation: '<path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/>',
+    parking: '<path d="M5 3h8a6 6 0 0 1 0 12H9v6H5zm4 4v4h4a2 2 0 0 0 0-4z"/>',
+    carwash: '<path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13v6h-2v-2H7v2H5zm3-6V4m4 3V2m4 5V4" stroke="currentColor" stroke-width="1.5"/>',
+    mechanic: '<path d="M21 6.5a5 5 0 0 1-6.6 4.7L6 19.6 4.4 18l8.4-8.4A5 5 0 0 1 17.5 3l-3 3 .5 3 3 .5z"/>',
+    toilet: '<path d="M7 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm10 0a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM5 7h4l1 7H8v8H6v-8H4zm10 0h4l2 9h-2.5v6h-3v-6H13z"/>'
+  };
+  function showQuick() {
+    if (nav) return;
+    placeLayer.clearLayers();
+    const box = $("results"); box.replaceChildren();
+    const q = document.createElement("div"); q.className = "quick";
+    const row = document.createElement("div"); row.className = "saved-row";
+    for (const k of ["home", "work"]) {
+      const sp = getSaved(k), b = document.createElement("button"); b.type = "button";
+      const t = document.createElement("b"); t.textContent = SAVED_NAME[k];
+      const sub = document.createElement("span"); sub.textContent = sp ? sp.sub : "Tap to set am";
+      b.append(t, sub);
+      b.onclick = () => sp ? (unlockSpeech(), box.hidden = true, $("q").blur(), startNav(sp)) : askWhere(k);
+      if (sp) b.oncontextmenu = (e) => { e.preventDefault(); askWhere(k); };
+      row.append(b);
     }
-    box.hidden = false;
+    q.append(row);
+    const cats = document.createElement("div"); cats.className = "cats";
+    for (const [key, label] of CATS) {
+      const b = document.createElement("button"); b.type = "button"; b.innerHTML = ICON(CAT_ICONS[key] || "");
+      const l = document.createElement("span"); l.textContent = label; b.append(l);
+      b.onclick = () => { unlockSpeech(); showPlaces(key); };
+      cats.append(b);
+    }
+    q.append(cats);
+    if (getSaved("home") || getSaved("work")) {
+      const ch = document.createElement("button"); ch.type = "button"; ch.className = "linkish"; ch.style.padding = "0 16px 12px";
+      ch.textContent = "Change Home or Work"; ch.onclick = () => { askWhere(getSaved("home") ? "home" : "work", true); };
+      q.append(ch);
+    }
+    box.append(q); box.hidden = false;
+  }
+  function askWhere(k, chooser) {
+    const box = $("results"); box.replaceChildren();
+    const pick = document.createElement("div"); pick.className = "pick";
+    const h = document.createElement("b"); h.textContent = chooser ? "Which one you wan change?" : `Set your ${SAVED_NAME[k]}`;
+    pick.append(h);
+    const btn = (text, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.onclick = fn; pick.append(b); };
+    if (chooser) { btn("Home", () => askWhere("home")); btn("Work", () => askWhere("work")); }
+    else {
+      btn("Use where I dey now", async () => {
+        if (!fresh()) { toast("I never get your location. Allow location first."); return; }
+        const road = await reverseRoad(me), area = await placeName(me);
+        savePlace(k, { title: road || area, sub: road ? area : "", lat: me.lat, lng: me.lng }); box.hidden = true;
+      });
+      btn("Search the address", () => { pendingSave = k; box.hidden = true; $("q").value = ""; $("q").placeholder = `Type your ${SAVED_NAME[k].toLowerCase()} address`; $("q").focus(); });
+      if (getSaved(k)) btn(`Remove ${SAVED_NAME[k]}`, () => { try { localStorage.removeItem("rg-" + k); } catch {} toast(`${SAVED_NAME[k]} don comot.`); showQuick(); });
+    }
+    btn("Cancel", () => showQuick());
+    box.append(pick); box.hidden = false;
+  }
+  async function findPlaces(key) {
+    const c = CATS.find(x => x[0] === key), p = me || CT;
+    if (GEO_KEY) {
+      for (const radius of [5000, 20000]) {
+        try {
+          const res = await fetch(`https://api.geoapify.com/v2/places?categories=${c[2]}&filter=circle:${p.lng},${p.lat},${radius}&bias=proximity:${p.lng},${p.lat}&limit=20&lang=en&apiKey=${GEO_KEY}`);
+          if (!res.ok) break;
+          const list = ((await res.json()).features || []).map(f => { const r = f.properties || {}; return { title: r.name || r.address_line1 || c[1], sub: r.name ? (r.address_line2 || r.street || "") : (r.address_line2 || ""), lat: r.lat, lng: r.lon }; });
+          if (list.length) return list;
+        } catch { break; }
+      }
+    }
+    // Backup: OpenStreetMap's own search for the same kind of place
+    const [k, v] = c[3].split("=");
+    for (const radius of [5000, 20000]) {
+      const q = `[out:json][timeout:15];(node["${k}"="${v}"](around:${radius},${p.lat},${p.lng});way["${k}"="${v}"](around:${radius},${p.lat},${p.lng}););out center 40;`;
+      const res = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q));
+      const els = (await res.json()).elements || [];
+      const list = els.map(e => ({ title: (e.tags && (e.tags.name || e.tags.brand)) || c[1], sub: e.tags ? [e.tags["addr:street"], e.tags["addr:suburb"] || e.tags["addr:city"]].filter(Boolean).join(", ") : "", lat: e.lat ?? (e.center && e.center.lat), lng: e.lon ?? (e.center && e.center.lon) })).filter(x => x.lat != null);
+      if (list.length) return list;
+    }
+    return [];
+  }
+  async function showPlaces(key, spoken) {
+    const c = CATS.find(x => x[0] === key);
+    const box = $("results"); box.replaceChildren();
+    const head = document.createElement("div"); head.className = "res-head"; head.textContent = c[1] + " near you";
+    const st = document.createElement("span"); st.textContent = "Dey find…"; head.append(st);
+    box.append(head); box.hidden = false;
+    let list = [];
+    try { list = await findPlaces(key); } catch {}
+    const from = me || CT;
+    list = list.map(d => ({ ...d, dist: hav(from, d) })).sort((a, b) => a.dist - b.dist).slice(0, 20);
+    st.textContent = list.length ? `${list.length} found` : "";
+    placeLayer.clearLayers();
+    if (!list.length) { const e = document.createElement("div"); e.className = "empty-row"; e.textContent = `I no see ${c[1].toLowerCase()} near you. Network fit be the wahala, or try search the name.`; box.append(e); if (spoken) await say(`I no see ${c[1].toLowerCase()} near you.`); return null; }
+    box.append(modeRow());
+    list.forEach((d, i) => {
+      const b = document.createElement("button"); b.type = "button";
+      const t = document.createElement("b"); t.textContent = `${i + 1}. ${d.title}`; const s2 = document.createElement("span");
+      s2.textContent = [d.sub, fmtDist(d.dist)].filter(Boolean).join(" · ");
+      b.append(t, s2); b.onclick = () => { unlockSpeech(); box.hidden = true; $("q").blur(); placeLayer.clearLayers(); startNav(d); };
+      box.append(b);
+      const mk = L.marker([d.lat, d.lng], { icon: L.divIcon({ className: "pin", html: `<span class="place-dot">${i + 1}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }) });
+      mk.on("click", () => { unlockSpeech(); box.hidden = true; placeLayer.clearLayers(); startNav(d); });
+      placeLayer.addLayer(mk);
+    });
+    follow = false; $("recenter").hidden = false;
+    map.fitBounds(L.latLngBounds([[from.lat, from.lng], ...list.slice(0, 8).map(d => [d.lat, d.lng])]), { paddingTopLeft: [30, 260], paddingBottomRight: [30, 200], maxZoom: 16 });
+    return list;
   }
 
   /* ===== 10. Navigation ===== */
@@ -1281,6 +1483,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     routeLayer = L.polyline(ll, { color: "#2f7cf6", weight: 6, opacity: 1, interactive: false }).addTo(map);
   }
   async function startNav(dest) {
+    placeLayer.clearLayers();
     if (!fresh()) { await say("I need your location first. Allow location for Road Clear, then try again."); notice("Allow location to get directions."); return false; }
     setTalk("speaking", "I dey find road…", dest.title);
     let routes;
@@ -1567,6 +1770,23 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
       if (STOP_RX.test(norm(heard))) { if (nav) { endNav(true); await say("Okay, I don stop the directions."); } else await say("We no dey navigate now."); return; }
 
+      const pi = placeIntent(heard);
+      if (pi && pi.saved) {
+        const sp = getSaved(pi.saved);
+        if (!sp) { await say(`You never save your ${pi.saved === "home" ? "house" : "work"}. Tap the search bar, then ${SAVED_NAME[pi.saved]}, to set am.`); return; }
+        const m = detectMode(heard); if (m) setMode(m);
+        busy = false; await startNav(sp); return;
+      }
+      if (pi && pi.cat) {
+        const m = detectMode(heard); if (m) setMode(m);
+        const label = CATS.find(x => x[0] === pi.cat)[1].toLowerCase();
+        const list = await showPlaces(pi.cat, true);
+        if (!list || !list.length) return;
+        const d = list[0];
+        const ok = await askYesNo("Go here?", `${d.title}, ${fmtDist(d.dist)}`, `The nearest ${label} na ${d.title}, ${sayDist(d.dist)} from you. You wan go there? Talk yes or no.`);
+        if (ok) { $("results").hidden = true; busy = false; await startNav(d); } else await say("Okay. The others dey for the list.");
+        return;
+      }
       const navQ = parseNav(heard);
       let { type, road, area } = navQ ? { type: null, road: "", area: null } : parseReport(heard, curCity);
       if (navQ) {
