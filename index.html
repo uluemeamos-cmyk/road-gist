@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Clear">
-<meta name="description" content="Police roadblock and go-slow alerts in Pidgin, for Cape Town, Lagos, Abuja and Port Harcourt.">
+<meta name="description" content="Navigation and live road alerts in Pidgin, for South Africa and Nigeria.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
@@ -331,11 +331,48 @@ const CONFIG = {
 <script>
 // PARSER START
 // Cities Road Clear knows. center = [lat, lng], radius in metres, bbox for search = minLon,minLat,maxLon,maxLat
+// Search covers the whole country the driver is in (minLon,minLat,maxLon,maxLat), closest results first
+const COUNTRIES = {
+  za: { name: "South Africa", bbox: "16.3,-34.9,33.0,-22.1" },
+  ng: { name: "Nigeria", bbox: "2.6,4.2,14.7,13.95" }
+};
+// Cities Road Clear knows by name. center = [lat, lng], radius in metres
 const CITIES = {
-  capetown: { name: "Cape Town", center: [-33.93, 18.55], radius: 90000, bbox: "17.6,-34.9,19.9,-33.0" },
-  lagos: { name: "Lagos", center: [6.53, 3.38], radius: 70000, bbox: "2.70,6.35,4.10,6.85" },
-  abuja: { name: "Abuja", center: [9.06, 7.45], radius: 60000, bbox: "6.95,8.75,7.80,9.35" },
-  ph: { name: "Port Harcourt", center: [4.82, 7.02], radius: 50000, bbox: "6.80,4.60,7.30,5.05" }
+  capetown: { name: "Cape Town", country: "za", center: [-33.93, 18.55], radius: 90000 },
+  johannesburg: { name: "Johannesburg", country: "za", center: [-26.17, 28.04], radius: 45000 },
+  pretoria: { name: "Pretoria", country: "za", center: [-25.75, 28.19], radius: 35000 },
+  durban: { name: "Durban", country: "za", center: [-29.84, 30.98], radius: 40000 },
+  gqeberha: { name: "Gqeberha", country: "za", center: [-33.96, 25.60], radius: 30000 },
+  eastlondon: { name: "East London", country: "za", center: [-33.03, 27.85], radius: 25000 },
+  bloemfontein: { name: "Bloemfontein", country: "za", center: [-29.09, 26.16], radius: 25000 },
+  polokwane: { name: "Polokwane", country: "za", center: [-23.90, 29.47], radius: 20000 },
+  mbombela: { name: "Mbombela", country: "za", center: [-25.48, 30.97], radius: 20000 },
+  pietermaritzburg: { name: "Pietermaritzburg", country: "za", center: [-29.60, 30.38], radius: 20000 },
+  rustenburg: { name: "Rustenburg", country: "za", center: [-25.67, 27.24], radius: 20000 },
+  kimberley: { name: "Kimberley", country: "za", center: [-28.73, 24.75], radius: 18000 },
+  george: { name: "George", country: "za", center: [-33.96, 22.46], radius: 18000 },
+  lagos: { name: "Lagos", country: "ng", center: [6.53, 3.38], radius: 70000 },
+  abuja: { name: "Abuja", country: "ng", center: [9.06, 7.45], radius: 60000 },
+  ph: { name: "Port Harcourt", country: "ng", center: [4.82, 7.02], radius: 50000 },
+  ibadan: { name: "Ibadan", country: "ng", center: [7.38, 3.95], radius: 30000 },
+  kano: { name: "Kano", country: "ng", center: [12.00, 8.59], radius: 30000 },
+  benin: { name: "Benin City", country: "ng", center: [6.34, 5.60], radius: 25000 },
+  enugu: { name: "Enugu", country: "ng", center: [6.46, 7.55], radius: 25000 },
+  onitsha: { name: "Onitsha", country: "ng", center: [6.14, 6.80], radius: 18000 },
+  asaba: { name: "Asaba", country: "ng", center: [6.20, 6.73], radius: 12000 },
+  owerri: { name: "Owerri", country: "ng", center: [5.48, 7.03], radius: 20000 },
+  aba: { name: "Aba", country: "ng", center: [5.11, 7.37], radius: 18000 },
+  warri: { name: "Warri", country: "ng", center: [5.52, 5.75], radius: 20000 },
+  uyo: { name: "Uyo", country: "ng", center: [5.04, 7.91], radius: 18000 },
+  calabar: { name: "Calabar", country: "ng", center: [4.98, 8.34], radius: 18000 },
+  kaduna: { name: "Kaduna", country: "ng", center: [10.51, 7.42], radius: 25000 },
+  jos: { name: "Jos", country: "ng", center: [9.90, 8.86], radius: 20000 },
+  abeokuta: { name: "Abeokuta", country: "ng", center: [7.15, 3.36], radius: 20000 },
+  ilorin: { name: "Ilorin", country: "ng", center: [8.50, 4.54], radius: 20000 },
+  akure: { name: "Akure", country: "ng", center: [7.26, 5.21], radius: 18000 },
+  osogbo: { name: "Osogbo", country: "ng", center: [7.78, 4.54], radius: 15000 },
+  maiduguri: { name: "Maiduguri", country: "ng", center: [11.83, 13.15], radius: 20000 },
+  sokoto: { name: "Sokoto", country: "ng", center: [13.01, 5.25], radius: 18000 }
 };
 const CITY_AREAS = {
   capetown: {
@@ -364,8 +401,19 @@ const CITY_AREAS = {
     "Ada George":[4.8500,6.9700],"Choba":[4.8900,6.9200],"Eleme":[4.7900,7.1200],"GRA":[4.8150,7.0050],"Mile 1":[4.7900,6.9950],
     "Mile 3":[4.8000,6.9900],"Oyigbo":[4.8800,7.1500],"Rumuokoro":[4.8700,7.0000],"Rumuola":[4.8400,7.0100],
     "Rumuokwuta":[4.8550,6.9900],"Trans Amadi":[4.8150,7.0350],"Woji":[4.8300,7.0500]
-  }
+  },
+  johannesburg: {
+    "Johannesburg CBD":[-26.2041,28.0473],"Hillbrow":[-26.1880,28.0480],"Yeoville":[-26.1810,28.0640],"Berea":[-26.1840,28.0560],
+    "Braamfontein":[-26.1930,28.0340],"Rosebank":[-26.1460,28.0410],"Sandton":[-26.1076,28.0567],"Randburg":[-26.0936,28.0012],
+    "Midrand":[-25.9990,28.1280],"Soweto":[-26.2485,27.8540]
+  },
+  pretoria: {
+    "Pretoria CBD":[-25.7479,28.1881],"Sunnyside":[-25.7530,28.2050],"Arcadia":[-25.7450,28.2100],"Hatfield":[-25.7490,28.2380],"Centurion":[-25.8600,28.1890]
+  },
+  durban: { "Durban CBD":[-29.8587,31.0218],"Umhlanga":[-29.7270,31.0840],"Pinetown":[-29.8167,30.8580] }
 };
+// Every other city: its own name is the area
+for (const [k, c] of Object.entries(CITIES)) if (!CITY_AREAS[k]) CITY_AREAS[k] = { [c.name]: c.center };
 const AREA_CENTERS = Object.assign({}, ...Object.values(CITY_AREAS));
 const AREA_CITY = Object.fromEntries(Object.entries(CITY_AREAS).flatMap(([c, a]) => Object.keys(a).map(n => [n, c])));
 // [pattern, area, city, local] — "local" patterns are generic words that only count inside that city
@@ -401,7 +449,24 @@ const AREA_ALIASES = [
   ["rumuokoro", "Rumuokoro", "ph"], ["rumuola", "Rumuola", "ph"], ["rumuokwuta", "Rumuokwuta", "ph"], ["trans ?amadi", "Trans Amadi", "ph"],
   ["choba", "Choba", "ph"], ["eleme|onne", "Eleme", "ph"], ["mile ?1\\b|mile one|diobu", "Mile 1", "ph"], ["mile ?3\\b|mile three", "Mile 3", "ph"],
   ["\\bwoji\\b", "Woji", "ph"], ["oyigbo", "Oyigbo", "ph"], ["ada george", "Ada George", "ph"],
-  ["\\bgra\\b|old gra|new gra", "GRA", "ph", true]
+  ["\\bgra\\b|old gra|new gra", "GRA", "ph", true],
+  // South Africa
+  ["hillbrow|hill brow", "Hillbrow", "johannesburg"], ["yeoville|yeo ville", "Yeoville", "johannesburg"], ["braamfontein|braam", "Braamfontein", "johannesburg"],
+  ["rosebank", "Rosebank", "johannesburg"], ["sandton", "Sandton", "johannesburg"], ["randburg", "Randburg", "johannesburg"], ["midrand", "Midrand", "johannesburg"],
+  ["soweto", "Soweto", "johannesburg"], ["\\bberea\\b", "Berea", "johannesburg"],
+  ["johannesburg|joburg|jo'burg|jozi|egoli", "Johannesburg CBD", "johannesburg"],
+  ["sunnyside|sunny side", "Sunnyside", "pretoria"], ["arcadia", "Arcadia", "pretoria"], ["hatfield", "Hatfield", "pretoria"], ["centurion", "Centurion", "pretoria"],
+  ["pretoria|tshwane|\\bpta\\b", "Pretoria CBD", "pretoria"],
+  ["umhlanga", "Umhlanga", "durban"], ["pinetown|pine town", "Pinetown", "durban"], ["durban|ethekwini", "Durban CBD", "durban"],
+  ["gqeberha|port elizabeth|\\bpe\\b", "Gqeberha", "gqeberha"], ["east london", "East London", "eastlondon"], ["bloemfontein|bloem", "Bloemfontein", "bloemfontein"],
+  ["polokwane", "Polokwane", "polokwane"], ["mbombela|nelspruit", "Mbombela", "mbombela"], ["pietermaritzburg|maritzburg|\\bpmb\\b", "Pietermaritzburg", "pietermaritzburg"],
+  ["rustenburg", "Rustenburg", "rustenburg"], ["kimberley", "Kimberley", "kimberley"], ["\\bgeorge\\b", "George", "george"],
+  // Nigeria
+  ["ibadan", "Ibadan", "ibadan"], ["\\bkano\\b", "Kano", "kano"], ["benin city|\\bbenin\\b", "Benin City", "benin"], ["enugu", "Enugu", "enugu"],
+  ["onitsha|upper iweka", "Onitsha", "onitsha"], ["asaba", "Asaba", "asaba"], ["owerri", "Owerri", "owerri"], ["\\baba\\b", "Aba", "aba"],
+  ["warri|effurun", "Warri", "warri"], ["\\buyo\\b", "Uyo", "uyo"], ["calabar", "Calabar", "calabar"], ["kaduna", "Kaduna", "kaduna"],
+  ["\\bjos\\b", "Jos", "jos"], ["abeokuta", "Abeokuta", "abeokuta"], ["ilorin", "Ilorin", "ilorin"], ["akure", "Akure", "akure"],
+  ["osogbo|oshogbo", "Osogbo", "osogbo"], ["maiduguri", "Maiduguri", "maiduguri"], ["sokoto", "Sokoto", "sokoto"]
 ];
 const ROAD_ALIASES = [
   ["\\bn ?1\\b|\\b(?:n|en) one\\b", "N1"], ["\\bn ?2\\b|\\b(?:n|en) two\\b|\\b(?:n|en) too\\b", "N2"],
@@ -418,7 +483,13 @@ const ROAD_ALIASES = [
   ["carter bridge", "Carter Bridge"], ["eko bridge", "Eko Bridge"], ["badagry expressway|badagry road", "Badagry Expressway"],
   ["kubwa expressway|kubwa road", "Kubwa Expressway"], ["nyanya ?-? ?keffi|keffi road", "Nyanya-Keffi Rd"],
   ["east ?-? ?west road", "East-West Rd"], ["aba road", "Aba Rd"], ["ikwerre road|ikwere road", "Ikwerre Rd"],
-  ["airport road", "Airport Rd"]
+  ["airport road", "Airport Rd"],
+  ["\\bn ?3\\b|\\b(?:n|en) three\\b", "N3"], ["\\bn ?4\\b|\\b(?:n|en) four\\b", "N4"], ["\\bn ?12\\b|\\b(?:n|en) twelve\\b", "N12"],
+  ["\\bn ?14\\b", "N14"], ["\\bn ?17\\b", "N17"], ["\\bm ?1\\b|\\b(?:m|em) one\\b", "M1"], ["\\br ?21\\b", "R21"], ["\\br ?24\\b", "R24"],
+  ["ben schoeman", "N1 Ben Schoeman"], ["william nicol", "William Nicol Dr"],
+  ["benin ?-? ?ore", "Benin-Ore Rd"], ["lagos ?-? ?benin", "Lagos-Benin Expressway"], ["abuja ?-? ?kaduna", "Abuja-Kaduna Expressway"],
+  ["enugu ?-? ?onitsha", "Enugu-Onitsha Expressway"], ["onitsha ?-? ?owerri", "Onitsha-Owerri Rd"], ["kano ?-? ?zaria", "Kano-Zaria Rd"],
+  ["sagamu|shagamu", "Sagamu Interchange"]
 ];
 const POLICE_RX = /\b(police|polis|roadblock|road block|block road|checkpoint|check point|saps|metro|cops?|traffic (?:cop|officer|police|warden)|officers?|soldier|soldiers|army|lastma|last ma|frsc|f r s c|road safety|vio|v i o|mopol|mobile police|npf|customs|task force|patrol|speed trap|speed check|speed gun|stop and search|stop-and-search|stop n search|dey search|searching cars|search motor|search car|search people)\b/;
 const GOSLOW_RX = /\b(go ?slow|go-slow|traffic|jam|hold ?up|holdup|standstill|stand still|no dey move|e no dey move|stuck|congestion|gridlock|tanker|trailer)\b/;
@@ -467,7 +538,13 @@ function detectArea(t, city) {
 function parseReport(text, city) { const type = detectType(text); const { road, rest } = detectRoad(text); return { type, road, area: detectArea(rest, city) }; }
 function cityOf(p) {
   if (!p) return null;
-  for (const [k, c] of Object.entries(CITIES)) if (hav(p, { lat: c.center[0], lng: c.center[1] }) < c.radius) return k;
+  let best = null, bd = Infinity;
+  for (const [k, c] of Object.entries(CITIES)) { const d = hav(p, { lat: c.center[0], lng: c.center[1] }); if (d < c.radius && d < bd) { bd = d; best = k; } }
+  return best;
+}
+function countryOf(p) {
+  if (!p) return null;
+  for (const [k, c] of Object.entries(COUNTRIES)) { const [x1, y1, x2, y2] = c.bbox.split(",").map(Number); if (p.lng >= x1 && p.lng <= x2 && p.lat >= y1 && p.lat <= y2) return k; }
   return null;
 }
 function parseNav(text) { const m = norm(text).trim().match(NAV_RX); return m ? m[1].replace(/\b(please|abeg|now)\b/g, "").trim() : null; }
@@ -609,9 +686,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   // Best name for a spot: nearby area, else the city, else what the map service calls the town
   async function placeName(p) {
     const a = nearestArea(p); if (a) return a;
-    const c = cityOf(p); if (c) return CITIES[c].name;
     const info = await reverseInfo(p);
-    return (info.city || "Unknown area").slice(0, 60);
+    if (info.suburb || info.city) return (info.suburb || info.city).slice(0, 60);
+    const c = cityOf(p); if (c) return CITIES[c].name;
+    return "Unknown area";
   }
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -938,7 +1016,9 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
   /* ===== 7. Reporting (one tap) ===== */
   function fillAreaSelect() {
-    const order = [curCity, ...Object.keys(CITIES).filter(k => k !== curCity)];
+    const home = CITIES[curCity] ? CITIES[curCity].country : "za";
+    const rest = Object.keys(CITIES).filter(k => k !== curCity);
+    const order = [curCity, ...rest.filter(k => CITIES[k].country === home), ...rest.filter(k => CITIES[k].country !== home)];
     $("r-area").innerHTML = '<option value="">Choose area</option>' + order.map(k =>
       `<optgroup label="${CITIES[k].name}">${Object.keys(CITY_AREAS[k]).map(a => `<option>${a}</option>`).join("")}</optgroup>`).join("");
   }
@@ -953,7 +1033,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         const res = await timed(`https://api.geoapify.com/v1/geocode/reverse?lat=${p.lat}&lon=${p.lng}&lang=en&format=json&apiKey=${GEO_KEY}`);
         if (res.ok) {
           const r = ((await res.json()).results || [])[0] || {};
-          const info = { road: (r.street || r.name || "").slice(0, 80), city: r.city || r.suburb || r.district || r.county || r.state || "" };
+          const info = { road: (r.street || r.name || "").slice(0, 80), suburb: r.suburb || r.district || "", city: r.city || r.county || r.state || "" };
           roadCache.set(key, info); return info;
         }
       } catch {}
@@ -961,7 +1041,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try {
       const res = await timed(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}&lang=en`);
       const j = await res.json(); const pr = (j.features && j.features[0] && j.features[0].properties) || {};
-      const info = { road: (pr.street || pr.name || "").slice(0, 80), city: pr.city || pr.district || pr.county || pr.state || "" };
+      const info = { road: (pr.street || pr.name || "").slice(0, 80), suburb: pr.district || pr.locality || "", city: pr.city || pr.county || pr.state || "" };
       roadCache.set(key, info); return info;
     } catch { return { road: "", city: "" }; }
   }
@@ -1035,11 +1115,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   async function geocodeGeo(q) {
     const bias = me || CT;
-    const city = (me && cityOf(me)) || (me ? null : curCity);
+    const cc = (me && countryOf(me)) || (CITIES[curCity] && CITIES[curCity].country);
     const base = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&bias=proximity:${bias.lng},${bias.lat}&limit=6&lang=en&format=json&apiKey=${GEO_KEY}`;
     const get = async (url) => { const res = await fetch(url); if (!res.ok) throw new Error("geoapify " + res.status); return (await res.json()).results || []; };
     let list = [];
-    if (city) { const [x1, y1, x2, y2] = CITIES[city].bbox.split(","); list = await get(`${base}&filter=rect:${x1},${y1},${x2},${y2}`); }
+    if (cc) { const [x1, y1, x2, y2] = COUNTRIES[cc].bbox.split(","); list = await get(`${base}&filter=rect:${x1},${y1},${x2},${y2}`); }
     if (!list.length) list = await get(base);
     return list.map(r => {
       const title = r.name || r.address_line1 || r.street || r.city || q;
@@ -1049,10 +1129,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   async function geocodePhoton(q) {
     const bias = me || CT;
-    const city = (me && cityOf(me)) || (me ? null : curCity);
+    const cc = (me && countryOf(me)) || (CITIES[curCity] && CITIES[curCity].country);
     const base = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${bias.lat}&lon=${bias.lng}&limit=6&lang=en`;
     let j = { features: [] };
-    if (city) { const r = await fetch(base + "&bbox=" + CITIES[city].bbox); j = await r.json(); }
+    if (cc) { const r = await fetch(base + "&bbox=" + COUNTRIES[cc].bbox); j = await r.json(); }
     if (!j.features || !j.features.length) { const r = await fetch(base); j = await r.json(); }  // nothing nearby: search everywhere, closest first
     return (j.features || []).map(f => {
       const p = f.properties || {};
@@ -1486,7 +1566,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try { sponsors = await store.sponsors(); ls.set("rg-sponsors", JSON.stringify(sponsors)); } catch {}
   }
   function pickSponsor(anyTime) {
-    const mine = sponsors.filter(s => !s.city || s.city === curCity);
+    const myCountry = CITIES[curCity] ? CITIES[curCity].country : null;
+    const mine = sponsors.filter(s => !s.city || s.city === curCity || s.city === myCountry);
     const ready = anyTime ? mine : mine.filter(s => Date.now() - +(ls.get("rg-sp-shown-" + s.id) || 0) > 4 * 3600e3);
     return ready.length ? ready[Math.floor(Math.random() * ready.length)] : null;
   }

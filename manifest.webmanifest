@@ -1,7 +1,7 @@
 {
   "name": "Road Clear",
   "short_name": "Road Clear",
-  "description": "Police roadblock and go-slow alerts in Pidgin, for Cape Town, Lagos, Abuja and Port Harcourt.",
+  "description": "Navigation and live road alerts in Pidgin, for South Africa and Nigeria.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

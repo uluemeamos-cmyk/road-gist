@@ -165,7 +165,7 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
           <label for="sp-code">Discount code <span class="hint">(optional)</span><input id="sp-code" maxlength="30" placeholder="ROADCLEAR10"></label>
           <label class="full" for="sp-link">Button link <span class="hint">(website, or WhatsApp like https://wa.me/2348012345678)</span><input id="sp-link" type="url" maxlength="300" placeholder="https://"></label>
           <label class="full" for="sp-logo">Logo <span class="hint">(upload to the sponsors folder on GitHub, then type e.g. sponsors/hotel.png)</span><input id="sp-logo" maxlength="300" placeholder="sponsors/hotel.png"></label>
-          <label for="sp-city">Show in<select id="sp-city"><option value="">All cities</option><option value="capetown">Cape Town</option><option value="lagos">Lagos</option><option value="abuja">Abuja</option><option value="ph">Port Harcourt</option></select></label>
+          <label for="sp-city">Show in<select id="sp-city"><option value="">Everywhere</option><option value="za">All of South Africa</option><option value="ng">All of Nigeria</option><optgroup label="South Africa"><option value="capetown">Cape Town</option><option value="johannesburg">Johannesburg</option><option value="pretoria">Pretoria</option><option value="durban">Durban</option><option value="gqeberha">Gqeberha</option><option value="eastlondon">East London</option><option value="bloemfontein">Bloemfontein</option><option value="polokwane">Polokwane</option><option value="mbombela">Mbombela</option><option value="pietermaritzburg">Pietermaritzburg</option><option value="rustenburg">Rustenburg</option><option value="kimberley">Kimberley</option><option value="george">George</option></optgroup><optgroup label="Nigeria"><option value="lagos">Lagos</option><option value="abuja">Abuja</option><option value="ph">Port Harcourt</option><option value="ibadan">Ibadan</option><option value="kano">Kano</option><option value="benin">Benin City</option><option value="enugu">Enugu</option><option value="onitsha">Onitsha</option><option value="asaba">Asaba</option><option value="owerri">Owerri</option><option value="aba">Aba</option><option value="warri">Warri</option><option value="uyo">Uyo</option><option value="calabar">Calabar</option><option value="kaduna">Kaduna</option><option value="jos">Jos</option><option value="abeokuta">Abeokuta</option><option value="ilorin">Ilorin</option><option value="akure">Akure</option><option value="osogbo">Osogbo</option><option value="maiduguri">Maiduguri</option><option value="sokoto">Sokoto</option></optgroup></select></label>
           <span></span>
           <label for="sp-start">Start date <span class="hint">(optional)</span><input id="sp-start" type="date"></label>
           <label for="sp-end">End date <span class="hint">(optional)</span><input id="sp-end" type="date"></label>
@@ -274,9 +274,9 @@ const CONFIG = {
     loadUsers(); loadSponsors();
     $("refresh").disabled = false;
   }
-  const CITY_NAMES = { capetown: "Cape Town", lagos: "Lagos", abuja: "Abuja", ph: "Port Harcourt", other: "Other places", unknown: "Location off" };
+  const CITY_NAMES = {"capetown": "Cape Town", "johannesburg": "Johannesburg", "pretoria": "Pretoria", "durban": "Durban", "gqeberha": "Gqeberha", "eastlondon": "East London", "bloemfontein": "Bloemfontein", "polokwane": "Polokwane", "mbombela": "Mbombela", "pietermaritzburg": "Pietermaritzburg", "rustenburg": "Rustenburg", "kimberley": "Kimberley", "george": "George", "lagos": "Lagos", "abuja": "Abuja", "ph": "Port Harcourt", "ibadan": "Ibadan", "kano": "Kano", "benin": "Benin City", "enugu": "Enugu", "onitsha": "Onitsha", "asaba": "Asaba", "owerri": "Owerri", "aba": "Aba", "warri": "Warri", "uyo": "Uyo", "calabar": "Calabar", "kaduna": "Kaduna", "jos": "Jos", "abeokuta": "Abeokuta", "ilorin": "Ilorin", "akure": "Akure", "osogbo": "Osogbo", "maiduguri": "Maiduguri", "sokoto": "Sokoto", "za": "All of South Africa", "ng": "All of Nigeria", "other": "Other places", "unknown": "Location off"};
   /* ---- Sponsors ---- */
-  const CITY_LABEL = { capetown: "Cape Town", lagos: "Lagos", abuja: "Abuja", ph: "Port Harcourt" };
+  const CITY_LABEL = CITY_NAMES;
   async function loadSponsors() {
     const box = $("sp-list");
     const { data, error } = await sb.from("sponsors").select("*").order("created_at", { ascending: false });
@@ -297,7 +297,7 @@ const CONFIG = {
       const msg = document.createElement("span"); msg.className = "small"; msg.textContent = sp.message;
       const nums = document.createElement("span"); nums.className = "sp-nums";
       const rate = st.views ? Math.round(100 * st.taps / st.views) : 0;
-      nums.textContent = `Last 30 days: ${st.views} views · ${st.taps} taps (${rate}%) · ${st.views_today} views today · ${sp.city ? CITY_LABEL[sp.city] : "All cities"}${sp.code ? " · code " + sp.code : ""}`;
+      nums.textContent = `Last 30 days: ${st.views} views · ${st.taps} taps (${rate}%) · ${st.views_today} views today · ${sp.city ? (CITY_LABEL[sp.city] || sp.city) : "Everywhere"}${sp.code ? " · code " + sp.code : ""}`;
       info.append(nm, pill, msg, nums);
       const acts = document.createElement("div"); acts.className = "acts";
       const tog = document.createElement("button"); tog.type = "button"; tog.textContent = sp.active ? "Pause" : "Resume";
