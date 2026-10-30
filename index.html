@@ -1781,6 +1781,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   async function playClip(k) {
     const ctx = audioCtx(), c = await loadClipBuffer(k);
+    let started = false;
     if (ctx && c && ctx.state !== "closed") {
       try {
         if (ctx.state !== "running") await Promise.race([ctx.resume().catch(() => {}), sleep(400)]);
@@ -1793,10 +1794,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
             src.connect(g); g.connect(lim); lim.connect(ctx.destination);
             let done = false; const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(true); };
             const t = setTimeout(fin, (c.buf.duration + 1) * 1000);
-            src.onended = fin; curSrc = src; src.start();
+            src.onended = fin; curSrc = src; src.start(); started = true;
           });
         }
-      } catch {}
+      } catch { if (started) { await sleep(c.buf.duration * 1000); return true; } }
     }
     return playClipElement(k);
   }
@@ -1810,14 +1811,18 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       player.onended = () => fin(true); player.onerror = () => fin(false);
       player.onplaying = () => { started = true; };
       player.src = clipUrl[k]; player.currentTime = 0; player.muted = false; player.volume = 1;
-      const p = player.play(); if (p && p.catch) p.catch(() => fin(false));
+      const p = player.play(); if (p && p.catch) p.catch(() => setTimeout(() => fin(started || !player.paused), 300));
     });
   }
   function stopTalking() { try { speechSynthesis.cancel(); } catch {} try { player.pause(); } catch {} try { curSrc && curSrc.stop(); } catch {} }
   function unlockPlayer() {
-    if (playerUnlocked) return; const k = VOICE_KEYS.find(hasClip); if (!k) return; playerUnlocked = true;
+    if (playerUnlocked) return; playerUnlocked = true;
     player.setAttribute("playsinline", ""); player.preload = "auto";
-    try { player.muted = true; player.src = clipUrl[k]; const p = player.play(); if (p && p.then) p.then(() => { player.pause(); player.muted = false; }).catch(() => { player.muted = false; }); else player.muted = false; } catch { player.muted = false; }
+    // A separate, silent sound: unlocks audio on iPhone without touching the player your clips use
+    try {
+      const u = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
+      u.setAttribute("playsinline", ""); u.volume = 0; const pr = u.play(); if (pr && pr.catch) pr.catch(() => { playerUnlocked = false; });
+    } catch { playerUnlocked = false; }
   }
   // iPhone only unlocks sound on touchend or click (not pointerdown). Run on every such tap until sound is running;
   // also after the app comes back from the background, when iPhone locks sound again.
@@ -1839,7 +1844,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     $("talk-sub").textContent = shown;
     if (busy) setTalk("speaking", "Road Clear dey talk");
     for (const p of parts) {
-      if (typeof p !== "string" && hasClip(p.c)) { const ok = await playClip(p.c); if (!ok && p.t) await speakTts(p.t); }
+      if (typeof p !== "string" && hasClip(p.c)) {
+        const ok = await playClip(p.c);
+        if (!ok && p.t) { try { player.pause(); } catch {} try { curSrc && curSrc.stop(); } catch {} await speakTts(p.t); }
+      }
       else { const text = typeof p === "string" ? p : p.t; if (text) await speakTts(text); }
     }
     $("talk-sub").textContent = shown;
