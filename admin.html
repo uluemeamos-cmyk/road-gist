@@ -15,7 +15,7 @@
 :root {
   --bg: #f2f3ef; --surface: #ffffff; --ink: #1b1d1a; --muted: #62665e; --line: #dcdfd6;
   --brand: #1f4f3e; --gold: #c99a3a; --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
-  --acc: #c81e2e; --acc-soft: #fde7e9; --hole: #8a5a2b; --hole-soft: #f4ebe1; --flood: #0e7490; --flood-soft: #dff2f7; --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee;
+  --acc: #c81e2e; --acc-soft: #fde7e9; --hole: #8a5a2b; --hole-soft: #f4ebe1; --flood: #0e7490; --flood-soft: #dff2f7; --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee; --pow: #a16207; --pow-soft: #fdf3d6; --wat: #1d4ed8; --wat-soft: #e3ebfd; --dng: #9f1239; --dng-soft: #fde4ea;
   --ok: #18794e; --ok-soft: #e1f3ea; --danger: #b42318; --danger-soft: #fde8e6;
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -24,7 +24,7 @@
 @media (prefers-color-scheme: dark) { :root {
   --bg: #121512; --surface: #1c201c; --ink: #eceee8; --muted: #a2a79c; --line: #323830;
   --brand: #173d30; --gold: #e3b964; --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116; --cam: #c4a1f5; --cam-soft: #2c2140;
-  --acc: #ff8a94; --acc-soft: #3b1519; --hole: #d9a877; --hole-soft: #33261a; --flood: #67cde6; --flood-soft: #11303a; --robot: #c3c9d3; --robot-soft: #262a30; --brk: #f58ab8; --brk-soft: #3a1626; --prot: #e4e4e7; --prot-soft: #2a2a2e;
+  --acc: #ff8a94; --acc-soft: #3b1519; --hole: #d9a877; --hole-soft: #33261a; --flood: #67cde6; --flood-soft: #11303a; --robot: #c3c9d3; --robot-soft: #262a30; --brk: #f58ab8; --brk-soft: #3a1626; --prot: #e4e4e7; --prot-soft: #2a2a2e; --pow: #f5c451; --pow-soft: #33280f; --wat: #8fb0fb; --wat-soft: #18223d; --dng: #fb8aa6; --dng-soft: #3a121d;
   --ok: #4fc58c; --ok-soft: #15301f; --danger: #f97066; --danger-soft: #3a1714; color-scheme: dark } }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -72,6 +72,7 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
 .rep.police { --c: var(--police); --cs: var(--police-soft); } .rep.goslow { --c: var(--slow); --cs: var(--slow-soft); } .rep.camera { --c: var(--cam); --cs: var(--cam-soft); }
 .rep.accident { --c: var(--acc); --cs: var(--acc-soft); } .rep.pothole { --c: var(--hole); --cs: var(--hole-soft); } .rep.flood { --c: var(--flood); --cs: var(--flood-soft); }
 .rep.robot { --c: var(--robot); --cs: var(--robot-soft); } .rep.breakdown { --c: var(--brk); --cs: var(--brk-soft); } .rep.protest { --c: var(--prot); --cs: var(--prot-soft); }
+.rep.power { --c: var(--pow); --cs: var(--pow-soft); } .rep.water { --c: var(--wat); --cs: var(--wat-soft); } .rep.danger { --c: var(--dng); --cs: var(--dng-soft); }
 .rep.gone { opacity: .62; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kind { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c); background: var(--cs); padding: 3px 8px; border-radius: 6px; }
@@ -206,7 +207,7 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
           <button class="chip" data-f="goslow" aria-pressed="false" type="button">Go-slow</button>
           <button class="chip" data-f="camera" aria-pressed="false" type="button">Cameras</button>
           <button class="chip" data-f="accident" aria-pressed="false" type="button">Accidents</button>
-          <button class="chip" data-f="hazard" aria-pressed="false" type="button">Potholes, floods, protests, more</button>
+          <button class="chip" data-f="hazard" aria-pressed="false" type="button">Potholes, floods, protests, outages, danger</button>
           <button class="chip" data-f="busy" aria-pressed="false" type="button">Busy phones</button>
         </div>
         <select id="days" aria-label="How far back">
@@ -237,9 +238,9 @@ const CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_KnsKDZ80dldCiypCwd1Y8g_0E5r87AJ"
 };
 (() => {
-  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3, accident: 120 * 60e3, pothole: 30 * 86400e3, flood: 12 * 3600e3, robot: 6 * 3600e3, breakdown: 60 * 60e3, protest: 3 * 3600e3 };
-  const LABELS = { police: "Police roadblock", goslow: "Go-slow", camera: "Speed camera", accident: "Accident", pothole: "Pothole", flood: "Flood", robot: "Traffic light off", breakdown: "Car breakdown", protest: "Protest or unrest" };
-  const HAZ = ["pothole", "flood", "robot", "breakdown", "protest"];
+  const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3, accident: 120 * 60e3, pothole: 30 * 86400e3, flood: 12 * 3600e3, robot: 6 * 3600e3, breakdown: 60 * 60e3, protest: 3 * 3600e3, power: 12 * 3600e3, water: 24 * 3600e3, danger: 6 * 3600e3 };
+  const LABELS = { police: "Police roadblock", goslow: "Go-slow", camera: "Speed camera", accident: "Accident", pothole: "Pothole", flood: "Flood", robot: "Traffic light off", breakdown: "Car breakdown", protest: "Protest or unrest", power: "No light", water: "No water", danger: "Danger alert" };
+  const HAZ = ["pothole", "flood", "robot", "breakdown", "protest", "power", "water", "danger"];
   const $ = (id) => document.getElementById(id);
   const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
   const toast = (m) => { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); };

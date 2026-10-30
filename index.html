@@ -23,6 +23,7 @@
   --police: #1f4fb8; --police-soft: #e5ecfb; --slow: #c2410c; --slow-soft: #fdeadf; --cam: #7a3fc4; --cam-soft: #f0e8fb;
   --acc: #c81e2e; --acc-soft: #fde7e9; --hole: #8a5a2b; --hole-soft: #f4ebe1; --flood: #0e7490; --flood-soft: #dff2f7;
   --robot: #3f4652; --robot-soft: #eceef1; --brk: #b0175e; --brk-soft: #fbe6ef; --prot: #27272a; --prot-soft: #ececee;
+  --pow: #a16207; --pow-soft: #fdf3d6; --wat: #1d4ed8; --wat-soft: #e3ebfd; --dng: #9f1239; --dng-soft: #fde4ea;
   --sign: #f5b301; --ok: #18794e; --ok-soft: #e1f3ea; --route: #2f7cf6; --on-color: #ffffff;
   --shadow: 0 6px 24px rgba(0,0,0,.18);
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
@@ -34,6 +35,7 @@
   --police: #7ea2f5; --police-soft: #1d2840; --slow: #fb8a52; --slow-soft: #3a2116; --cam: #c4a1f5; --cam-soft: #2c2140;
   --acc: #ff8a94; --acc-soft: #3b1519; --hole: #d9a877; --hole-soft: #33261a; --flood: #67cde6; --flood-soft: #11303a;
   --robot: #c3c9d3; --robot-soft: #262a30; --brk: #f58ab8; --brk-soft: #3a1626; --prot: #e4e4e7; --prot-soft: #2a2a2e;
+  --pow: #f5c451; --pow-soft: #33280f; --wat: #8fb0fb; --wat-soft: #18223d; --dng: #fb8aa6; --dng-soft: #3a121d;
   --ok: #4fc58c; --ok-soft: #15301f; --route: #5c9bff; --on-color: #111; --shadow: 0 6px 24px rgba(0,0,0,.5); color-scheme: dark }
   .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.9) saturate(.6); }
   .leaflet-container { background: #1a1c19; }
@@ -90,6 +92,9 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .warn.robot, .card.robot, .pop.robot { --c: var(--robot); --cs: var(--robot-soft); }
 .warn.breakdown, .card.breakdown, .pop.breakdown { --c: var(--brk); --cs: var(--brk-soft); }
 .warn.protest, .card.protest, .pop.protest { --c: var(--prot); --cs: var(--prot-soft); }
+.warn.power, .card.power, .pop.power { --c: var(--pow); --cs: var(--pow-soft); }
+.warn.water, .card.water, .pop.water { --c: var(--wat); --cs: var(--wat-soft); }
+.warn.danger, .card.danger, .pop.danger { --c: var(--dng); --cs: var(--dng-soft); }
 .warn.goslow { --c: var(--slow); --cs: var(--slow-soft); }
 .warn-top { display: flex; align-items: center; gap: 12px; }
 .warn-top .pin-icon { width: 44px; height: 44px; }
@@ -149,13 +154,14 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .extra summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink); padding: 4px 0; }
 .extra[open] summary { margin-bottom: 8px; }
 .extra label + label { margin-top: 10px; }
-.tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.tile { border: 0; border-radius: 18px; padding: 16px 8px; text-align: center; line-height: 1.15; display: grid; justify-items: center; gap: 8px; color: var(--on-color); font-weight: 800; font-size: 16px; font-family: var(--display); }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tile { border: 0; border-radius: 16px; padding: 11px 6px; gap: 5px; text-align: center; line-height: 1.15; display: grid; justify-items: center; gap: 8px; color: var(--on-color); font-weight: 800; font-size: 16px; font-family: var(--display); }
 .tile svg { width: 44px; height: 44px; }
 .tile.police { background: var(--police); } .tile.goslow { background: var(--slow); } .tile.camera { background: var(--cam); }
 .tile.accident { background: var(--acc); } .tile.pothole { background: var(--hole); } .tile.flood { background: var(--flood); }
 .tile.robot { background: var(--robot); } .tile.breakdown { background: var(--brk); } .tile.protest { background: #27272a; color: #fff; }
-.tile svg { width: 36px; height: 36px; }
+.tile.power { background: #a16207; } .tile.water { background: #1d4ed8; } .tile.danger { background: #9f1239; }
+.tile svg { width: 28px; height: 28px; }
 .tile:disabled { opacity: .5; }
 .where { font-size: 14px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .where b { color: var(--ink); }
@@ -190,7 +196,7 @@ label .opt { font-weight: 400; color: var(--muted); }
 .pin-icon svg { width: 22px; height: 22px; }
 .pin-icon.police { background: #1f4fb8; } .pin-icon.goslow { background: #c2410c; } .pin-icon.camera { background: #7a3fc4; }
 .pin-icon.accident { background: #c81e2e; } .pin-icon.pothole { background: #8a5a2b; } .pin-icon.flood { background: #0e7490; }
-.pin-icon.robot { background: #3f4652; } .pin-icon.breakdown { background: #b0175e; } .pin-icon.protest { background: #27272a; }
+.pin-icon.robot { background: #3f4652; } .pin-icon.breakdown { background: #b0175e; } .pin-icon.protest { background: #27272a; } .pin-icon.power { background: #a16207; } .pin-icon.water { background: #1d4ed8; } .pin-icon.danger { background: #9f1239; }
 .me { background: none; border: 0; }
 .me-dot { width: 26px; height: 26px; position: relative; }
 .me-dot i { position: absolute; inset: 4px; border-radius: 50%; background: #2f7cf6; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.4); }
@@ -326,6 +332,9 @@ label .opt { font-weight: 400; color: var(--muted); }
       <button class="tile robot" id="r-robot" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2h4a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm2 2.6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 5.4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>Traffic light off</button>
       <button class="tile breakdown" id="r-breakdown" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 2.5L1.5 21h21zM11 9h2v6.5h-2zm0 8h2v2h-2z"/></svg>Car breakdown</button>
       <button class="tile protest" id="r-protest" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l6 4.5V4L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Protest or unrest</button>
+      <button class="tile power" id="r-power" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>No light</button>
+      <button class="tile water" id="r-water" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2s7 7.6 7 12.5a7 7 0 0 1-14 0C5 9.6 12 2 12 2z"/><path d="M4 21L20 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>No water</button>
+      <button class="tile danger" id="r-danger" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12 2l9 4v6c0 5.2-3.8 9.6-9 11-5.2-1.4-9-5.8-9-11V6zm-1 5h2v6h-2zm0 8h2v2h-2z"/></svg>Danger alert</button>
     </div>
     <p class="small" style="margin:0">Tap one to send. Mount your phone; no type while you dey drive.</p>
   </div>
@@ -342,6 +351,8 @@ label .opt { font-weight: 400; color: var(--muted); }
       <button class="chip" data-f="camera" aria-pressed="false" type="button">Camera</button>
       <button class="chip" data-f="accident" aria-pressed="false" type="button">Accident</button>
       <button class="chip" data-f="hazard" aria-pressed="false" type="button">Pothole, flood, protest, more</button>
+      <button class="chip" data-f="danger" aria-pressed="false" type="button">Danger</button>
+      <button class="chip" data-f="utility" aria-pressed="false" type="button">Light and water</button>
     </div>
     <div class="feed" id="feed"></div>
     <p class="small" style="margin:0">Police report go off after 2 hours, go-slow after 1 hour, unless person confirm say e still dey.</p>
@@ -551,6 +562,9 @@ const ACCIDENT_RX = /\b(accident|accidents|crash|crashed|collision|smash|don jam
 const POTHOLE_RX = /\b(pothole|potholes|pot hole|pot holes|port hole|porthole|big hole|hole for road|bad road|road don spoil|road bad)\b/;
 const FLOOD_RX = /\b(flood|flooded|flooding|floods|water don cover|water cover road|water full road|water dey road)\b/;
 const ROBOT_RX = /\b(robots?|traffic lights?)\b.{0,30}\b(off|out|down|not working|no dey work|no work|spoil|dead|broken|no light)\b|\bno light for (?:the )?junction\b/;
+const POWER_RX = /\b(no light|light don go|light don cut|nepa don take light|nepa take light|phcn|power cut|power outage|power failure|blackout|load ?shedding|loadshedding|no power|no electricity|electricity don go|eskom)\b/;
+const WATER_RX = /\b(no water|water don cut|water cut|water outage|water don go|tap no dey run|taps? dry|no running water|water off)\b/;
+const DANGER_RX = /\b(robbery|robbers|robbed|armed robbery|hijack|hijacking|hijackers|hijacked|smash and grab|smash n grab|one chance|thief|thieves|stealing|mugging|mugged|gunshot|gunshots|shooting|shoot out|shootout|stabbing|kidnap|kidnapping|kidnappers)\b/;
 const PROTEST_RX = /\b(protest|protests|protester|protesters|riot|riots|rioting|unrest|demonstration|demonstrators|march|marching|strike|burning tyres|burning tires|burn tyres|burn tires|tyre dey burn|tire dey burn|shutdown|looting)\b/;
 const BREAKDOWN_RX = /\b(breakdown|break down|broke down|broken down|car don spoil|motor don spoil|truck don spoil|bus don spoil|stalled|tyre burst|tire burst|flat tyre|flat tire)\b/;
 const YES_RX = /\b(yes|yeah|yah|yep|yup|ya|ja|sure|ok|okay|correct|na so|drop am|drop it|send|go ahead|do am|confirm|right|make we go|oya|let's go|lets go)\b/;
@@ -623,6 +637,9 @@ function detectType(t) {
   if (FLOOD_RX.test(t)) return "flood";
   if (ROBOT_RX.test(t)) return "robot";
   if (CAMERA_RX.test(t)) return "camera";
+  if (WATER_RX.test(t)) return "water";
+  if (POWER_RX.test(t)) return "power";
+  if (DANGER_RX.test(t)) return "danger";
   if (PROTEST_RX.test(t)) return "protest";
   if (ACCIDENT_RX.test(t)) return "accident";
   if (POLICE_RX.test(t)) return "police";
@@ -779,7 +796,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 <script>
 (() => {
   const TTL = { police: 120 * 60e3, goslow: 60 * 60e3, camera: 30 * 86400e3,   // cameras and potholes stay 30 days after the last "E still dey"
-    accident: 120 * 60e3, pothole: 30 * 86400e3, flood: 12 * 3600e3, robot: 6 * 3600e3, breakdown: 60 * 60e3, protest: 3 * 3600e3 };
+    accident: 120 * 60e3, pothole: 30 * 86400e3, flood: 12 * 3600e3, robot: 6 * 3600e3, breakdown: 60 * 60e3, protest: 3 * 3600e3,
+    power: 12 * 3600e3, water: 24 * 3600e3, danger: 6 * 3600e3 };
   const LONG_LIVED = ["camera", "pothole"];  // fixed speed cameras stay 30 days after the last "E still dey"
   const $ = (id) => document.getElementById(id);
   const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
@@ -967,7 +985,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (clears.some(([dev]) => dev === r.by)) return false;
     return clears.length < 2;
   }
-  const LABELS = { police: "Police roadblock", goslow: "Go-slow", camera: "Speed camera", accident: "Accident", pothole: "Pothole", flood: "Flood", robot: "Traffic light off", breakdown: "Car breakdown", protest: "Protest or unrest" };
+  const LABELS = { police: "Police roadblock", goslow: "Go-slow", camera: "Speed camera", accident: "Accident", pothole: "Pothole", flood: "Flood", robot: "Traffic light off", breakdown: "Car breakdown", protest: "Protest or unrest", power: "No light", water: "No water", danger: "Danger alert" };
   const label = (t) => LABELS[t] || "Report";
   const posOf = (r) => r.lat != null ? { lat: r.lat, lng: r.lng } : (AREA_CENTERS[r.area] ? { lat: AREA_CENTERS[r.area][0], lng: AREA_CENTERS[r.area][1] } : null);
   const activeList = () => reports.filter(isActive);
@@ -998,6 +1016,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   const BARS = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="3" rx="1.5"/><rect x="2" y="10.5" width="14" height="3" rx="1.5"/><rect x="2" y="16" width="8" height="3" rx="1.5"/></svg>';
   const CAMERA = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h2l1.3-1.6A1.5 1.5 0 0 1 10 3h4a1.5 1.5 0 0 1 1.2.6L16.5 5h2A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5zM12 16.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2.2a1.8 1.8 0 1 1 0-3.6 1.8 1.8 0 0 1 0 3.6z"/></svg>';
   const MORE_ICONS = {
+    power: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
+    water: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s7 7.6 7 12.5a7 7 0 0 1-14 0C5 9.6 12 2 12 2z"/><path d="M4 21L20 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    danger: '<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 2l9 4v6c0 5.2-3.8 9.6-9 11-5.2-1.4-9-5.8-9-11V6zm-1 5h2v6h-2zm0 8h2v2h-2z"/></svg>',
+
     protest: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l6 4.5V4L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     accident: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 5.6L20 6l-2.6 5.2L22 14l-5.8.6L15 21l-3-4.6L9 21l-1.2-6.4L2 14l4.6-2.8L4 6l5.6 1.6z"/></svg>',
     pothole: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 15c0-3 4.3-5.4 9.5-5.4s9.5 2.4 9.5 5.4-4.3 5.4-9.5 5.4-9.5-2.4-9.5-5.4z"/><path d="M7 4.5l1.6 3M17 4.5l-1.6 3M12 3v3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
@@ -1094,6 +1116,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     for (const r of activeList()) {
       if (warned.has(r.id) || r.lat == null) continue;
       if (r.type === "camera" && (travelMode === "walk" || travelMode === "bicycle")) continue;
+      if (r.type === "power" || r.type === "water") continue;
       const p = { lat: r.lat, lng: r.lng };
       let ahead = null;
       if (nav) {
@@ -1123,6 +1146,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       : r.type === "pothole" ? [{ c: "pothole-ahead", t: `Pothole dey ${sayDist(dist)} ahead. Take am easy o.` }]
       : r.type === "flood" ? [{ c: "flood-ahead", t: `Water don cover road ${sayDist(dist)} ahead. Abeg no drive enter am.` }]
       : r.type === "robot" ? [{ c: "robot-ahead", t: `Traffic light no dey work ${sayDist(dist)} ahead. Drive careful for the junction.` }]
+      : r.type === "danger" ? [{ c: "danger-ahead", t: `Person report danger ${sayDist(dist)} ahead. Lock your doors, no stop for that area.` }]
       : r.type === "protest" ? [{ c: "protest-ahead", t: `Protest dey ${sayDist(dist)} ahead. Road fit block, find another road if you fit.` }]
       : r.type === "breakdown" ? [{ c: "breakdown-ahead", t: `Car don spoil for road ${sayDist(dist)} ahead. Watch am.` }]
       : [{ c: "goslow-ahead", t: `Go-slow dey ${sayDist(dist)} ahead. Take am easy.` }]);
@@ -1212,7 +1236,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const feed = $("feed"); feed.replaceChildren();
     const sp = pickSponsor(true); if (sp) feed.append(sponsorCard(sp, true));
     const HAZ = ["pothole", "flood", "robot", "breakdown", "protest"];
-    const list = sortedByNear(activeList().filter(r => filterType === "all" || r.type === filterType || (filterType === "hazard" && HAZ.includes(r.type))));
+    const UTIL = ["power", "water"];
+    const list = sortedByNear(activeList().filter(r => filterType === "all" || r.type === filterType || (filterType === "hazard" && HAZ.includes(r.type)) || (filterType === "utility" && UTIL.includes(r.type))));
     if (!list.length) { feed.innerHTML = '<div class="empty"><b>Road free for now</b><span>Nobody don report anything. If you see police or go-slow, tap Report or talk am.</span></div>'; return; }
     for (const r of list) feed.append(cardFor(r));
   }
@@ -1466,7 +1491,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (j.code !== "Ok" || !j.routes || !j.routes.length) throw new Error("no route");
     return j.routes.map(buildRoute);
   }
-  const AVOID = ["police", "goslow", "accident", "flood", "protest"];
+  const AVOID = ["police", "goslow", "accident", "flood", "protest", "danger"];
   function reportsOn(route, cameras = false) {
     return activeList().filter(r => r.lat != null && (cameras ? r.type === "camera" : AVOID.includes(r.type)) && projectOnRoute(route, { lat: r.lat, lng: r.lng }, -1).d < 60);
   }
@@ -1603,7 +1628,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (sub !== undefined) $("talk-sub").textContent = sub;
   }
   /* --- Your own recorded voice clips (voice folder on GitHub). Any clip not found uses the phone voice. --- */
-  const VOICE_KEYS = ["camera-ahead","accident-ahead","pothole-ahead","flood-ahead","robot-ahead","breakdown-ahead","protest-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
+  const VOICE_KEYS = ["camera-ahead","accident-ahead","pothole-ahead","flood-ahead","robot-ahead","breakdown-ahead","protest-ahead","danger-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
   const vnorm = (s) => String(s).toLowerCase().replace(/\.(m4a|mp3|wav|aac|caf|mp4|ogg)$/, "").replace(/[^a-z0-9]/g, "");
   const clipUrl = {};
   const player = new Audio(); player.preload = "auto";
