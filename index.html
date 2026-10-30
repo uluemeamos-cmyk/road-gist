@@ -1702,7 +1702,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (unlocked || !("speechSynthesis" in window)) return; unlocked = true;
     try { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } catch {}
   }
-  document.addEventListener("pointerdown", unlockSpeech, { once: true });
+  ["touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, unlockSpeech, { passive: true }));
   async function keepScreenOn() { try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {} }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && nav) keepScreenOn(); });
 
@@ -1760,6 +1760,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   const hasClip = (k) => !!clipUrl[k];
   // Clips play through Web Audio: each one is measured and boosted to the same loudness, with a limiter so loud ones don't crackle
   let actx = null; const clipBuf = {};
+  // Tell iPhone this is spoken audio for the user, so it plays even when the phone is on silent (iOS 17 and newer)
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
   function audioCtx() {
     if (!actx) { const C = window.AudioContext || window.webkitAudioContext; if (C) { try { actx = new C(); } catch {} } }
     return actx;
@@ -1781,7 +1783,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const ctx = audioCtx(), c = await loadClipBuffer(k);
     if (ctx && c && ctx.state !== "closed") {
       try {
-        if (ctx.state === "suspended") await ctx.resume();
+        if (ctx.state !== "running") await Promise.race([ctx.resume().catch(() => {}), sleep(400)]);
         if (ctx.state === "running") {
           return await new Promise((resolve) => {
             const src = ctx.createBufferSource(); src.buffer = c.buf;
@@ -1789,7 +1791,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
             const lim = ctx.createDynamicsCompressor();
             lim.threshold.value = -6; lim.knee.value = 4; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
             src.connect(g); g.connect(lim); lim.connect(ctx.destination);
-            let done = false; const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(); };
+            let done = false; const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(true); };
             const t = setTimeout(fin, (c.buf.duration + 1) * 1000);
             src.onended = fin; curSrc = src; src.start();
           });
@@ -1799,27 +1801,36 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     return playClipElement(k);
   }
   let curSrc = null;
+  // Backup player; resolves true if the clip played, false if the phone blocked it
   function playClipElement(k) {
     return new Promise((resolve) => {
-      let done = false; const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(); };
-      const t = setTimeout(fin, 9000);
-      player.onended = fin; player.onerror = fin;
-      player.src = clipUrl[k]; player.currentTime = 0;
-      const p = player.play(); if (p && p.catch) p.catch(fin);
+      let done = false, started = false;
+      const fin = (ok) => { if (done) return; done = true; clearTimeout(t); resolve(ok); };
+      const t = setTimeout(() => fin(started), 9000);
+      player.onended = () => fin(true); player.onerror = () => fin(false);
+      player.onplaying = () => { started = true; };
+      player.src = clipUrl[k]; player.currentTime = 0; player.muted = false; player.volume = 1;
+      const p = player.play(); if (p && p.catch) p.catch(() => fin(false));
     });
   }
   function stopTalking() { try { speechSynthesis.cancel(); } catch {} try { player.pause(); } catch {} try { curSrc && curSrc.stop(); } catch {} }
   function unlockPlayer() {
     if (playerUnlocked) return; const k = VOICE_KEYS.find(hasClip); if (!k) return; playerUnlocked = true;
+    player.setAttribute("playsinline", ""); player.preload = "auto";
     try { player.muted = true; player.src = clipUrl[k]; const p = player.play(); if (p && p.then) p.then(() => { player.pause(); player.muted = false; }).catch(() => { player.muted = false; }); else player.muted = false; } catch { player.muted = false; }
   }
-  document.addEventListener("pointerdown", unlockPlayer);
-  // Web Audio must be started from a tap on iPhone; then load the clips ready to play
-  document.addEventListener("pointerdown", () => {
+  // iPhone only unlocks sound on touchend or click (not pointerdown). Run on every such tap until sound is running;
+  // also after the app comes back from the background, when iPhone locks sound again.
+  function unlockAudio() {
+    unlockPlayer();
     const ctx = audioCtx(); if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (ctx.state !== "running") {
+      try { ctx.resume(); } catch {}
+      try { const b = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start(0); } catch {}
+    }
     if (!loadClipBuffer._started) { loadClipBuffer._started = true; setTimeout(() => VOICE_KEYS.filter(hasClip).forEach(k => loadClipBuffer(k)), 300); }
-  });
+  }
+  ["touchend", "click", "keydown"].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
 
   // say("text") speaks with the phone voice. say([{c:"clip-key", t:"fallback text"}, "more text"]) plays your clips where they exist.
   async function say(parts) {
@@ -1828,7 +1839,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     $("talk-sub").textContent = shown;
     if (busy) setTalk("speaking", "Road Clear dey talk");
     for (const p of parts) {
-      if (typeof p !== "string" && hasClip(p.c)) await playClip(p.c);
+      if (typeof p !== "string" && hasClip(p.c)) { const ok = await playClip(p.c); if (!ok && p.t) await speakTts(p.t); }
       else { const text = typeof p === "string" ? p : p.t; if (text) await speakTts(text); }
     }
     $("talk-sub").textContent = shown;
