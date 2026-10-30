@@ -1,5 +1,5 @@
 // Road Clear offline helper: opens the app with no signal and keeps map areas you've seen.
-const VERSION = "rc-2026-10-30a";
+const VERSION = "rc-2026-10-30b";
 const SHELL_CACHE = "rc-shell-" + VERSION;
 const TILE_CACHE = "rc-tiles-v1";
 const MAX_TILES = 3000; // roughly 40–60 MB of map

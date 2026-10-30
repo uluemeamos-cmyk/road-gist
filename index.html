@@ -208,6 +208,15 @@ label .opt { font-weight: 400; color: var(--muted); }
 .leaflet-popup-content { margin: 12px 14px; min-width: 220px; font-family: var(--body); font-size: 14px; }
 .pop { display: grid; gap: 8px; }
 
+/* Location and open-in-browser card */
+.gate { position: fixed; z-index: 60; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); top: calc(70px + env(safe-area-inset-top, 0px));
+  max-width: 520px; margin: 0 auto; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; display: grid; gap: 10px; border-top: 6px solid var(--sign); }
+.gate b { font-family: var(--display); font-size: 20px; line-height: 1.2; }
+.gate span { font-size: 15px; color: var(--ink); }
+.gate code { font-size: 13px; background: var(--bg); padding: 8px 10px; border-radius: 8px; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.gate-btns { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.gate-btns button { border-radius: 12px; padding: 13px; font-weight: 800; border: 1px solid var(--line); background: var(--bg); }
+.gate-btns .yes { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 /* Home, Work and nearby places */
 .quick { display: grid; gap: 0; }
 .saved-row { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
@@ -990,6 +999,37 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   const posOf = (r) => r.lat != null ? { lat: r.lat, lng: r.lng } : (AREA_CENTERS[r.area] ? { lat: AREA_CENTERS[r.area][0], lng: AREA_CENTERS[r.area][1] } : null);
   const activeList = () => reports.filter(isActive);
 
+  // If the same thing is already on the map nearby, count a new report as "E still dey" instead of a second pin
+  const MERGE = { camera: [80, Infinity], pothole: [80, Infinity], power: [1000, 6 * 3600e3], water: [1000, 6 * 3600e3] };
+  function findDuplicate(r) {
+    if (r.lat == null) return null;
+    const [radius, window] = MERGE[r.type] || [300, 30 * 60e3];
+    let best = null, bd = Infinity;
+    for (const x of activeList()) {
+      if (x.type !== r.type || String(x.id).startsWith("q") || x.lat == null) continue;
+      if (Date.now() - lastSeen(x) > window) continue;
+      const d = hav({ lat: r.lat, lng: r.lng }, { lat: x.lat, lng: x.lng });
+      if (d < radius && d < bd) { bd = d; best = x; }
+    }
+    return best;
+  }
+  // Returns { merged: "mine" | "confirmed" } when merged, otherwise what store.add returns
+  async function addOrMerge(r) {
+    const last = +(ls.get("rg-last-report") || 0);
+    if (Date.now() - last < 60e3) return { cooldown: Math.ceil((60e3 - (Date.now() - last)) / 1000) };
+    const res = await addOrMergeNow(r);
+    ls.set("rg-last-report", String(Date.now()));
+    return res;
+  }
+  async function addOrMergeNow(r) {
+    const dup = findDuplicate(r);
+    if (!dup) return store.add(r);
+    if (dup.by === DEVICE) return { merged: "mine" };
+    const k = `rg-v-${dup.id}-still`;
+    try { await store.confirm(dup.id, "still"); ls.set(k, String(Date.now())); }
+    catch (e) { if (!/RC_LIMIT/.test(errText(e))) throw e; }
+    return { merged: "confirmed" };
+  }
   async function vote(id, kind) {
     const k = `rg-v-${id}-${kind}`, last = +(ls.get(k) || 0);
     if (Date.now() - last < 10 * 60e3) { toast("You don already mark am. Thank you!"); return; }
@@ -1073,7 +1113,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   setInterval(syncMarkers, 60e3);
 
   map.on("dragstart", () => { follow = false; $("recenter").hidden = false; });
-  $("recenter").onclick = () => { follow = true; $("recenter").hidden = true; if (me) map.setView([me.lat, me.lng], nav ? 17 : Math.max(map.getZoom(), 15)); };
+  $("recenter").onclick = () => { if (!me) { ls.set("rg-loc-asked", "1"); gpsStarted = false; startGps(); } follow = true; $("recenter").hidden = true; if (me) map.setView([me.lat, me.lng], nav ? 17 : Math.max(map.getZoom(), 15)); };
 
   /* ===== 5. GPS ===== */
   function onPos(p) {
@@ -1094,7 +1134,48 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     else if (follow) map.setView(ll, nav ? Math.max(map.getZoom(), 16) : map.getZoom(), { animate: true });
     guidance(); checkWarnings();
   }
+  // WhatsApp, Facebook, Instagram and similar apps open links in their own small browser, where location and voice often fail
+  const UA = navigator.userAgent || "";
+  const inApp = /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|TikTok|musical_ly|BytedanceWebview|Twitter|; wv\)/i.test(UA);
+  const IOS = /iphone|ipad|ipod/i.test(UA);
+  function showOpenInBrowser() {
+    const box = document.createElement("div"); box.className = "gate";
+    const h = document.createElement("b"); h.textContent = "Open Road Clear for " + (IOS ? "Safari" : "Chrome");
+    const p = document.createElement("span");
+    p.textContent = IOS
+      ? "You open am inside WhatsApp or another app, so location and voice no go work well. Tap the ⋯ or Share button for the corner, then \"Open in Safari\". Or copy the link below and paste am for Safari."
+      : "You open am inside WhatsApp or another app, so location and voice no go work well. Tap the ⋮ for the top corner, then \"Open in Chrome\". Or copy the link below and paste am for Chrome.";
+    const link = document.createElement("code"); link.textContent = location.origin + location.pathname;
+    const row = document.createElement("div"); row.className = "gate-btns";
+    const copy = document.createElement("button"); copy.type = "button"; copy.className = "yes"; copy.textContent = "Copy link";
+    copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(link.textContent); copy.textContent = "Copied"; }
+      catch { const r = document.createRange(); r.selectNodeContents(link); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); copy.textContent = "Select and copy"; }
+    };
+    const stay = document.createElement("button"); stay.type = "button"; stay.textContent = "Continue here";
+    stay.onclick = () => { ls.set("rg-inapp-ok", "1"); box.remove(); askLocation(); };
+    row.append(copy, stay); box.append(h, p, link, row);
+    document.body.append(box);
+  }
+  // Explain first, then ask: people say yes more when they know why
+  async function askLocation() {
+    if (!("geolocation" in navigator)) { startGps(); return; }
+    let state = null;
+    try { state = (await navigator.permissions.query({ name: "geolocation" })).state; } catch {}
+    if (state === "granted" || ls.get("rg-loc-asked")) { startGps(); return; }
+    const box = document.createElement("div"); box.className = "gate";
+    const h = document.createElement("b"); h.textContent = "Make Road Clear see where you dey";
+    const p = document.createElement("span"); p.textContent = "E need your location to show you road, warn you before police and go-slow, and put your report for the right place. We no dey save where you dey go.";
+    const row = document.createElement("div"); row.className = "gate-btns";
+    const ok = document.createElement("button"); ok.type = "button"; ok.className = "yes"; ok.textContent = "Allow location";
+    ok.onclick = () => { ls.set("rg-loc-asked", "1"); box.remove(); startGps(); };
+    const later = document.createElement("button"); later.type = "button"; later.textContent = "Not now";
+    later.onclick = () => { box.remove(); notice("Without location, Road Clear no fit warn you or show where you dey. Tap the arrow button anytime to allow am."); $("recenter").hidden = false; };
+    row.append(ok, later); box.append(h, p, row); document.body.append(box);
+  }
+  let gpsStarted = false;
   function startGps() {
+    if (gpsStarted) return; gpsStarted = true;
     if (!("geolocation" in navigator)) { notice("This phone no fit share location, so the map no go follow you."); return; }
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const howTo = ios ? "On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using." : "On Android: tap the lock or settings icon beside the web address, then Permissions → Location → Allow.";
@@ -1212,9 +1293,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (pos) area = await placeName(pos);
     else { area = $("r-area").value; if (!area) { toast("Abeg choose the area."); return; } const c = AREA_CENTERS[area]; pos = { lat: c[0], lng: c[1] }; }
     const tilesEls = document.querySelectorAll(".tiles .tile"); tilesEls.forEach(t => t.disabled = true);
+    closeSheets();
     try {
-      const res = await store.add({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
-      ls.set("rg-myarea", area); closeSheets(); toast(res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
+      const res = await addOrMerge({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
+      ls.set("rg-myarea", area); closeSheets();
+      toast(res && res.cooldown ? `You just send report. Wait ${res.cooldown} seconds before you send another one.` : res && res.merged === "mine" ? "You don already report am. E still dey for map." : res && res.merged ? "Person don report am already. I add your own say e still dey. Thank you!" : res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
     } catch (e) { toast(rcMessage(e)); }
     finally { tilesEls.forEach(t => t.disabled = false); }
   }
@@ -1675,7 +1758,48 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     }
   }
   const hasClip = (k) => !!clipUrl[k];
-  function playClip(k) {
+  // Clips play through Web Audio: each one is measured and boosted to the same loudness, with a limiter so loud ones don't crackle
+  let actx = null; const clipBuf = {};
+  function audioCtx() {
+    if (!actx) { const C = window.AudioContext || window.webkitAudioContext; if (C) { try { actx = new C(); } catch {} } }
+    return actx;
+  }
+  async function loadClipBuffer(k) {
+    if (clipBuf[k]) return clipBuf[k];
+    const ctx = audioCtx(); if (!ctx || !clipUrl[k]) return null;
+    try {
+      const data = await (await fetch(clipUrl[k])).arrayBuffer();
+      const buf = await new Promise((ok, bad) => { const p = ctx.decodeAudioData(data, ok, bad); if (p && p.then) p.then(ok, bad); });
+      let sum = 0, n = 0, peak = 0;
+      for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i += 4) { const v = Math.abs(d[i]); sum += v * v; n++; if (v > peak) peak = v; } }
+      const rms = Math.sqrt(sum / Math.max(1, n)) || 0.01;
+      const gain = Math.max(1, Math.min(10, 0.22 / rms));   // target loudness, never quieter than recorded, at most 10x
+      return (clipBuf[k] = { buf, gain });
+    } catch { return null; }
+  }
+  async function playClip(k) {
+    const ctx = audioCtx(), c = await loadClipBuffer(k);
+    if (ctx && c && ctx.state !== "closed") {
+      try {
+        if (ctx.state === "suspended") await ctx.resume();
+        if (ctx.state === "running") {
+          return await new Promise((resolve) => {
+            const src = ctx.createBufferSource(); src.buffer = c.buf;
+            const g = ctx.createGain(); g.gain.value = c.gain;
+            const lim = ctx.createDynamicsCompressor();
+            lim.threshold.value = -6; lim.knee.value = 4; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
+            src.connect(g); g.connect(lim); lim.connect(ctx.destination);
+            let done = false; const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(); };
+            const t = setTimeout(fin, (c.buf.duration + 1) * 1000);
+            src.onended = fin; curSrc = src; src.start();
+          });
+        }
+      } catch {}
+    }
+    return playClipElement(k);
+  }
+  let curSrc = null;
+  function playClipElement(k) {
     return new Promise((resolve) => {
       let done = false; const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(); };
       const t = setTimeout(fin, 9000);
@@ -1684,12 +1808,18 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       const p = player.play(); if (p && p.catch) p.catch(fin);
     });
   }
-  function stopTalking() { try { speechSynthesis.cancel(); } catch {} try { player.pause(); } catch {} }
+  function stopTalking() { try { speechSynthesis.cancel(); } catch {} try { player.pause(); } catch {} try { curSrc && curSrc.stop(); } catch {} }
   function unlockPlayer() {
     if (playerUnlocked) return; const k = VOICE_KEYS.find(hasClip); if (!k) return; playerUnlocked = true;
     try { player.muted = true; player.src = clipUrl[k]; const p = player.play(); if (p && p.then) p.then(() => { player.pause(); player.muted = false; }).catch(() => { player.muted = false; }); else player.muted = false; } catch { player.muted = false; }
   }
   document.addEventListener("pointerdown", unlockPlayer);
+  // Web Audio must be started from a tap on iPhone; then load the clips ready to play
+  document.addEventListener("pointerdown", () => {
+    const ctx = audioCtx(); if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    if (!loadClipBuffer._started) { loadClipBuffer._started = true; setTimeout(() => VOICE_KEYS.filter(hasClip).forEach(k => loadClipBuffer(k)), 300); }
+  });
 
   // say("text") speaks with the phone voice. say([{c:"clip-key", t:"fallback text"}, "more text"]) plays your clips where they exist.
   async function say(parts) {
@@ -1847,8 +1977,11 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       const ok = await askYesNo("Drop this report?", summary, [`You talk say ${summary}.`, { c: "confirm", t: "Make I drop am? Talk yes or no." }]);
       if (ok) {
         try {
-          const res = await store.add({ type, area, road, note: "Reported by voice", lat: pos ? pos.lat : null, lng: pos ? pos.lng : null }); ls.set("rg-myarea", area);
-          if (res && res.queued) await say("Network no dey now. I don keep am, I go send am when network come back. Drive safe.");
+          const res = await addOrMerge({ type, area, road, note: "Reported by voice", lat: pos ? pos.lat : null, lng: pos ? pos.lng : null }); ls.set("rg-myarea", area);
+          if (res && res.cooldown) await say("You just send report. Wait small before you send another one.");
+          else if (res && res.merged === "mine") await say("You don already report am. E still dey for map. Drive safe.");
+          else if (res && res.merged) await say("Person don report am already. I don add your own say e still dey. Thank you.");
+          else if (res && res.queued) await say("Network no dey now. I don keep am, I go send am when network come back. Drive safe.");
           else await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]);
         }
         catch (e) { if (/RC_/.test(errText(e))) await say(rcMessage(e)); else await say([{ c: "network-error", t: "E no go. Network get wahala. Try again small time." }]); }
@@ -1993,7 +2126,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   window.addEventListener("online", () => countUser(me ? (cityOf(me) || "other") : "unknown"));
 
   store.start();
-  startGps();
+  if (inApp && !ls.get("rg-inapp-ok")) showOpenInBrowser(); else askLocation();
   loadClips();
 })();
 </script>
