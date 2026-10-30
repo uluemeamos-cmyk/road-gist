@@ -1592,10 +1592,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   async function startNav(dest) {
     placeLayer.clearLayers();
-    if (!fresh()) { await say("I need your location first. Allow location for Road Clear, then try again."); notice("Allow location to get directions."); return false; }
+    if (!fresh()) { await say([{ c: "need-location", t: "I need your location first. Allow location for Road Clear, then try again." }]); notice("Allow location to get directions."); return false; }
     setTalk("speaking", "I dey find road…", dest.title);
     let routes;
-    try { routes = await fetchRoutes(me, dest); } catch { await say("I no fit find road go there now. Check your network and try again."); setTalk("idle", "Tap and talk", ""); return false; }
+    try { routes = await fetchRoutes(me, dest); } catch { await say([{ c: "no-road", t: "I no fit find road go there now. Check your network and try again." }]); setTalk("idle", "Tap and talk", ""); return false; }
     const { best, avoided, n } = pickRoute(routes);
     nav = { dest, route: best, idx: 0, off: 0, lastReroute: Date.now(), rerouting: false, mode: travelMode };
     drawRoute(best);
@@ -1711,7 +1711,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     if (sub !== undefined) $("talk-sub").textContent = sub;
   }
   /* --- Your own recorded voice clips (voice folder on GitHub). Any clip not found uses the phone voice. --- */
-  const VOICE_KEYS = ["camera-ahead","accident-ahead","pothole-ahead","flood-ahead","robot-ahead","breakdown-ahead","protest-ahead","danger-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
+  const VOICE_KEYS = ["need-location","no-road","no-mic","directions-stopped","okay","wait-small","already-reported","merged","saved-offline","go-there","camera-ahead","accident-ahead","pothole-ahead","flood-ahead","robot-ahead","breakdown-ahead","protest-ahead","danger-ahead","talk-now","no-hear","police-or-goslow","which-area","confirm","dropped","not-dropped","network-error","police-ahead","goslow-ahead","road-free","in-1500","in-600","in-400","in-150","now-now","turn-left","turn-right","slight-left","slight-right","sharp-left","sharp-right","u-turn","straight","keep-left","keep-right","take-exit","roundabout","lets-go","rerouting","arrived"];
   const vnorm = (s) => String(s).toLowerCase().replace(/\.(m4a|mp3|wav|aac|caf|mp4|ogg)$/, "").replace(/[^a-z0-9]/g, "");
   const clipUrl = {};
   const player = new Audio(); player.preload = "auto";
@@ -1867,7 +1867,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     return chosenVoice;
   }
   try { speechSynthesis.addEventListener("voiceschanged", () => { chosenVoice = undefined; }); } catch {}
+  // The phone's robot voice is switched off: only your recorded clips speak. Unrecorded words show on screen only.
+  const ROBOT_VOICE = false;
   function speakTts(text) {
+    if (!ROBOT_VOICE) { try { speechSynthesis.cancel(); } catch {} return sleep(Math.min(2500, 500 + String(text || "").length * 25)); }
     return new Promise((resolve) => {
       if (!("speechSynthesis" in window)) { toast(text); return setTimeout(resolve, 1500 + text.length * 60); }
       try {
@@ -1939,10 +1942,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try {
       await say([{ c: "talk-now", t: "Talk now." }]);
       const heard = await listen(8000);
-      if (micBlocked) { await say("I no fit use your microphone. Allow microphone for this site, then try again."); return; }
+      if (micBlocked) { await say([{ c: "no-mic", t: "I no fit use your microphone. Allow microphone for this site, then try again." }]); return; }
       if (!heard) { await say([{ c: "no-hear", t: "I no hear you. Tap again and talk." }]); return; }
 
-      if (STOP_RX.test(norm(heard))) { if (nav) { endNav(true); await say("Okay, I don stop the directions."); } else await say("We no dey navigate now."); return; }
+      if (STOP_RX.test(norm(heard))) { if (nav) { endNav(true); await say([{ c: "directions-stopped", t: "Okay, I don stop the directions." }]); } else await say("We no dey navigate now."); return; }
 
       const pi = placeIntent(heard);
       if (pi && pi.saved) {
@@ -1957,8 +1960,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         const list = await showPlaces(pi.cat, true);
         if (!list || !list.length) return;
         const d = list[0];
-        const ok = await askYesNo("Go here?", `${d.title}, ${fmtDist(d.dist)}`, `The nearest ${label} na ${d.title}, ${sayDist(d.dist)} from you. You wan go there? Talk yes or no.`);
-        if (ok) { $("results").hidden = true; busy = false; await startNav(d); } else await say("Okay. The others dey for the list.");
+        const ok = await askYesNo("Go here?", `${d.title}, ${fmtDist(d.dist)}`, [`The nearest ${label} na ${d.title}, ${sayDist(d.dist)} from you.`, { c: "go-there", t: "You wan go there? Talk yes or no." }]);
+        if (ok) { $("results").hidden = true; busy = false; await startNav(d); } else await say([{ c: "okay", t: "Okay. The others dey for the list." }]);
         return;
       }
       const navQ = parseNav(heard);
@@ -1968,8 +1971,8 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         let list = []; try { list = await geocode(navQ); } catch {}
         if (!list.length) { await say(`I no see ${navQ}. Try say am another way, or type am for search.`); return; }
         const d = list[0];
-        const ok = await askYesNo("Go here?", [d.title, d.sub].filter(Boolean).join(", "), `You wan go ${d.title}${d.sub ? ", " + d.sub.split(",")[0] : ""}? Talk yes or no.`);
-        if (ok) { busy = false; await startNav(d); } else await say("Okay.");
+        const ok = await askYesNo("Go here?", [d.title, d.sub].filter(Boolean).join(", "), [`${d.title}${d.sub ? ", " + d.sub.split(",")[0] : ""}.`, { c: "go-there", t: "You wan go there? Talk yes or no." }]);
+        if (ok) { busy = false; await startNav(d); } else await say([{ c: "okay", t: "Okay." }]);
         return;
       }
       if (!type && (ASK_RX.test(norm(heard)) || area)) { await readOut(area || ""); return; }
@@ -1977,7 +1980,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       if (!type) {
         await say([{ c: "police-or-goslow", t: "Na police or go-slow?" }]);
         const a = await listen(5000); type = a && detectType(a);
-        if (!type) { await say("I no catch am. Tap again and talk."); return; }
+        if (!type) { await say([{ c: "no-hear", t: "I no catch am. Tap again and talk." }]); return; }
       }
       // Use the phone's location unless the driver named a different area
       let pos = null;
@@ -1988,7 +1991,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
           await say([{ c: "which-area", t: "Which area?" }]);
           const a = await listen(6000); area = a && detectArea(a, curCity);
           if (!road && a) road = detectRoad(a).road;
-          if (!area) { await say("I no know that area. Tap again, or make passenger use the Report button."); return; }
+          if (!area) { await say([{ c: "which-area", t: "I no know that area. Tap again, or make passenger use the Report button." }]); return; }
         }
         const c = AREA_CENTERS[area]; pos = c ? { lat: c[0], lng: c[1] } : null;
       }
@@ -1997,15 +2000,15 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       if (ok) {
         try {
           const res = await addOrMerge({ type, area, road, note: "Reported by voice", lat: pos ? pos.lat : null, lng: pos ? pos.lng : null }); ls.set("rg-myarea", area);
-          if (res && res.cooldown) await say("You just send report. Wait small before you send another one.");
-          else if (res && res.merged === "mine") await say("You don already report am. E still dey for map. Drive safe.");
-          else if (res && res.merged) await say("Person don report am already. I don add your own say e still dey. Thank you.");
-          else if (res && res.queued) await say("Network no dey now. I don keep am, I go send am when network come back. Drive safe.");
+          if (res && res.cooldown) await say([{ c: "wait-small", t: "You just send report. Wait small before you send another one." }]);
+          else if (res && res.merged === "mine") await say([{ c: "already-reported", t: "You don already report am. E still dey for map. Drive safe." }]);
+          else if (res && res.merged) await say([{ c: "merged", t: "Person don report am already. I don add your own say e still dey. Thank you." }]);
+          else if (res && res.queued) await say([{ c: "saved-offline", t: "Network no dey now. I don keep am, I go send am when network come back. Drive safe." }]);
           else await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]);
         }
         catch (e) { if (/RC_/.test(errText(e))) await say(rcMessage(e)); else await say([{ c: "network-error", t: "E no go. Network get wahala. Try again small time." }]); }
       } else if (ok === false) await say([{ c: "not-dropped", t: "Okay, I no drop am." }]);
-      else await say("I no hear yes, so I no drop am.");
+      else await say([{ c: "not-dropped", t: "I no hear yes, so I no drop am." }]);
     } finally {
       busy = false;
       setTalk("idle", "Tap and talk", nav ? "\"Stop directions\" or \"Police dey here\"" : "\"Police dey here\" or \"Carry me go Bellville\"");
