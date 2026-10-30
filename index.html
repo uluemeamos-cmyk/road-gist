@@ -78,6 +78,33 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .turn-text b { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
 .turn-text span { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Road today card */
+.today { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; display: grid; gap: 10px; max-height: 58vh; overflow-y: auto; }
+.today-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.today-head div { display: grid; gap: 1px; min-width: 0; }
+.today-head b { font-family: var(--display); font-size: 19px; font-weight: 800; line-height: 1.15; }
+.today-head span { font-size: 13px; color: var(--muted); }
+.today-head button { border: 0; background: transparent; color: var(--muted); font-size: 18px; width: 32px; height: 32px; flex: none; }
+.today-route { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: var(--bg); }
+.today-route .tr-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.today-route .tr-top b { font-size: 15px; }
+.today-route .tr-top strong { font-family: var(--display); font-size: 22px; color: var(--ok); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.today-route .tr-msg { font-size: 14px; }
+.today-route .tr-msg.bad { color: var(--acc); font-weight: 700; }
+.today-route button { border: 0; border-radius: 10px; padding: 11px; font-weight: 800; background: var(--ink); color: var(--bg); }
+.today-sum { display: flex; flex-wrap: wrap; gap: 6px; }
+.today-sum span { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 999px; background: var(--cs, var(--bg)); color: var(--c, var(--ink)); }
+.today-list { display: grid; gap: 8px; }
+.today-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border: 0; background: transparent; text-align: left; padding: 0; color: var(--ink); }
+.today-item .pin-icon { width: 30px; height: 30px; border-width: 2px; color: #fff; }
+.today-item .pin-icon svg { fill: #fff; }
+.today-item .pin-icon svg { width: 16px; height: 16px; }
+.today-item div { display: grid; min-width: 0; }
+.today-item b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-item span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-item em { font-style: normal; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.today-empty { font-size: 14px; color: var(--muted); }
+.today .linkish { padding: 0; }
 .notice { background: var(--surface); border-left: 5px solid var(--sign); border-radius: 12px; padding: 10px 14px; font-size: 14px; box-shadow: var(--shadow); display: flex; gap: 10px; align-items: flex-start; }
 .notice span { flex: 1; }
 .notice button { border: 0; background: transparent; color: var(--muted); font-weight: 700; padding: 0 4px; }
@@ -281,6 +308,7 @@ label .opt { font-weight: 400; color: var(--muted); }
     <div class="turn-icon" id="turn-icon"></div>
     <div class="turn-text"><b id="turn-dist"></b><span id="turn-name"></span></div>
   </div>
+  <section class="today" id="today" hidden aria-label="Road today"></section>
   <div class="notice" id="notice" hidden><span id="notice-text"></span><button type="button" id="notice-x" aria-label="Close">✕</button></div>
   <div class="warn" id="warn" hidden>
     <div class="warn-top"><span class="pin-icon" id="warn-icon"></span><div><b id="warn-title"></b><span id="warn-sub"></span></div></div>
@@ -365,6 +393,7 @@ label .opt { font-weight: 400; color: var(--muted); }
     </div>
     <div class="feed" id="feed"></div>
     <p class="small" style="margin:0">Police report go off after 2 hours, go-slow after 1 hour, unless person confirm say e still dey.</p>
+    <button class="linkish" id="open-today" type="button">Road today summary</button>
     <button class="linkish" id="open-review" type="button">Rate Road Clear</button>
   </div>
 </section>
@@ -1120,6 +1149,10 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     const c = p.coords, prev = me;
     me = { lat: c.latitude, lng: c.longitude, acc: c.accuracy, speed: c.speed, heading: (typeof c.heading === "number" && !isNaN(c.heading)) ? c.heading : null, t: Date.now() };
     if (me.heading == null && prev) me.heading = hav(prev, me) > 8 ? bearing(prev, me) : prev.heading;
+    if ((me.speed == null || isNaN(me.speed)) && prev && me.t > prev.t) {
+      const dt = (me.t - prev.t) / 1000, moved = hav(prev, me);
+      me.speed = dt >= 1 && moved > Math.max(5, (c.accuracy || 0) / 2) ? moved / dt : (dt < 15 && prev.speed != null ? prev.speed : 0);
+    }
     const ll = [me.lat, me.lng];
     if (!meMarker) {
       meMarker = L.marker(ll, { icon: L.divIcon({ className: "me", html: '<div class="me-dot"><span class="arrow"></span><i></i></div>', iconSize: [26, 26], iconAnchor: [13, 13] }), interactive: false, zIndexOffset: 1000 }).addTo(map);
@@ -1198,17 +1231,15 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
       if (warned.has(r.id) || r.lat == null) continue;
       if (r.type === "camera" && (travelMode === "walk" || travelMode === "bicycle")) continue;
       if (r.type === "power" || r.type === "water") continue;
+      if (r.by === DEVICE) continue;
       const p = { lat: r.lat, lng: r.lng };
       let ahead = null;
       if (nav) {
         const here = projectOnRoute(nav.route, me, nav.idx), there = projectOnRoute(nav.route, p, -1);
         if (there.d < 60 && there.along > here.along && there.along - here.along < 1200) ahead = there.along - here.along;
       } else {
-        const d = hav(me, p);
-        if (d < 600) {
-          if (me.heading == null || (me.speed != null && me.speed < 2)) ahead = d;
-          else { const diff = Math.abs(((bearing(me, p) - me.heading) + 540) % 360 - 180); if (diff < 60) ahead = d; }
-        }
+        const d = hav(me, p), moving = me.speed != null && me.speed > 3.3 && me.heading != null;
+        if (moving && d < 600) { const diff = Math.abs(((bearing(me, p) - me.heading) + 540) % 360 - 180); if (diff < 60) ahead = d; }
       }
       if (ahead != null) { warned.add(r.id); showWarning(r, ahead); break; }
     }
@@ -1366,7 +1397,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     });
   }
   let searchT = null, searchSeq = 0;
-  $("q").addEventListener("focus", () => { if (!$("q").value.trim()) showQuick(); });
+  $("q").addEventListener("focus", () => { hideToday(); if (!$("q").value.trim()) showQuick(); });
   map.on("click", () => { if (!nav) { $("results").hidden = true; } });
   $("q").addEventListener("input", () => {
     const q = $("q").value.trim(); $("q-clear").hidden = !q; $("brand").hidden = !!q;
@@ -1591,6 +1622,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     routeLayer = L.polyline(ll, { color: "#2f7cf6", weight: 6, opacity: 1, interactive: false }).addTo(map);
   }
   async function startNav(dest) {
+    hideToday();
     placeLayer.clearLayers();
     if (!fresh()) { await say([{ c: "need-location", t: "I need your location first. Allow location for Road Clear, then try again." }]); notice("Allow location to get directions."); return false; }
     setTalk("speaking", "I dey find road…", dest.title);
@@ -2132,6 +2164,135 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   loadSponsors().then(() => setTimeout(maybeShowSponsor, 10000));
   setInterval(loadSponsors, 30 * 60e3);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeShowSponsor, 8000); });
+
+  /* ===== Road today: a short summary when the app opens, before people leave the house ===== */
+  let todayOpen = false, todayRoute = null, todayRouteKey = "", todayRouteAt = 0, todayBusy = false;
+  const NEARBY_KM = 15;
+  function greeting() { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; }
+  function hideToday() { todayOpen = false; $("today").hidden = true; }
+  // Which saved place is the trip: leave Home in the morning for Work, go back Home later, or go wherever you are not
+  function todayTrip() {
+    const home = getSaved("home"), work = getSaved("work");
+    if (!home && !work) return null;
+    if (!fresh()) return { dest: work || home, key: work ? "work" : "home", noLocation: true };
+    const nearHome = home && hav(me, home) < 1500, nearWork = work && hav(me, work) < 1500;
+    if (nearHome && work) return { dest: work, key: "work" };
+    if (nearWork && home) return { dest: home, key: "home" };
+    if (home && work) return new Date().getHours() < 12 ? { dest: work, key: "work" } : { dest: home, key: "home" };
+    const only = work || home, onlyKey = work ? "work" : "home";
+    return hav(me, only) < 1500 ? null : { dest: only, key: onlyKey };
+  }
+  async function loadTodayRoute(trip) {
+    const key = trip.key + ":" + me.lat.toFixed(2) + "," + me.lng.toFixed(2) + ":" + travelMode;
+    if (todayRoute && key === todayRouteKey && Date.now() - todayRouteAt < 15 * 60e3) return todayRoute;
+    if (todayBusy) return todayRoute; todayBusy = true;
+    try { const r = (await fetchRoutes(me, trip.dest))[0]; todayRoute = r; todayRouteKey = key; todayRouteAt = Date.now(); return r; }
+    catch { return null; } finally { todayBusy = false; }
+  }
+  function nearbyReports() {
+    const from = fresh() ? me : null;
+    let list = activeList().filter(r => posOf(r));
+    if (from) list = list.filter(r => hav(from, posOf(r)) < NEARBY_KM * 1000);
+    else list = list.filter(r => r.area && AREA_CITY[r.area] === curCity);
+    return sortedByNear(list);
+  }
+  async function renderToday() {
+    if (!todayOpen) return;
+    const box = $("today"); box.replaceChildren();
+    // header
+    const head = document.createElement("div"); head.className = "today-head";
+    const hd = document.createElement("div");
+    const t = document.createElement("b"); t.textContent = `${greeting()}. Road today`;
+    const sub = document.createElement("span");
+    sub.textContent = fresh() ? `Within ${NEARBY_KM} km of you · ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : `${CITIES[curCity] ? CITIES[curCity].name : "Your area"} · turn on location for your exact road`;
+    hd.append(t, sub);
+    const x = document.createElement("button"); x.type = "button"; x.setAttribute("aria-label", "Close"); x.textContent = "✕"; x.onclick = hideToday;
+    head.append(hd, x); box.append(head);
+
+    // your trip
+    const trip = todayTrip();
+    if (trip) {
+      const card = document.createElement("div"); card.className = "today-route";
+      const top = document.createElement("div"); top.className = "tr-top";
+      const name = document.createElement("b"); name.textContent = `Your road to ${SAVED_NAME[trip.key]}`;
+      const time = document.createElement("strong"); time.textContent = "…";
+      top.append(name, time);
+      const msg = document.createElement("div"); msg.className = "tr-msg"; msg.textContent = trip.noLocation ? "Turn on location to check your road." : "Dey check your road…";
+      const go = document.createElement("button"); go.type = "button"; go.textContent = `Start trip to ${SAVED_NAME[trip.key]}`;
+      go.onclick = () => { unlockSpeech(); hideToday(); startNav(trip.dest); };
+      card.append(top, msg, go); box.append(card);
+      if (!trip.noLocation) {
+        loadTodayRoute(trip).then(route => {
+          if (!todayOpen || !route) { if (!route) { msg.textContent = "I no fit check the road now. Network fit be the wahala."; time.textContent = ""; } return; }
+          time.textContent = fmtDur(route.duration);
+          const blocks = reportsOn(route), cams = reportsOn(route, true);
+          const others = activeList().filter(r => r.lat != null && ["pothole", "robot", "breakdown"].includes(r.type) && projectOnRoute(route, { lat: r.lat, lng: r.lng }, -1).d < 60);
+          if (blocks.length) {
+            const counts = {}; blocks.forEach(b => counts[label(b.type)] = (counts[label(b.type)] || 0) + 1);
+            msg.className = "tr-msg bad";
+            msg.textContent = Object.entries(counts).map(([k, n]) => `${n} ${k.toLowerCase()}`).join(", ") + " for your road. Directions go try go round am.";
+          } else if (others.length || cams.length) {
+            msg.textContent = [others.length ? `${others.length} pothole, broken traffic light or breakdown` : "", cams.length ? `${cams.length} speed camera${cams.length > 1 ? "s" : ""}` : ""].filter(Boolean).join(" and ") + " for your road. No roadblock reported.";
+          } else msg.textContent = "Nobody don report anything for your road yet. Drive safe, and report wetin you see.";
+        });
+      }
+    } else if (!getSaved("home") && !getSaved("work")) {
+      const set = document.createElement("button"); set.type = "button"; set.className = "linkish";
+      set.textContent = "Save your Home and Work to see your road here every morning";
+      set.onclick = () => { hideToday(); $("q").focus(); };
+      box.append(set);
+    }
+
+    // what's around
+    const list = nearbyReports();
+    const road = list.filter(r => r.type !== "power" && r.type !== "water");
+    const util = list.filter(r => r.type === "power" || r.type === "water");
+    if (!list.length) {
+      const e = document.createElement("div"); e.className = "today-empty";
+      e.textContent = "No reports near you yet. That no mean say road clear, e mean say nobody don report. If you see something, tap Report.";
+      box.append(e);
+    } else {
+      const counts = {}; road.forEach(r => counts[r.type] = (counts[r.type] || 0) + 1);
+      const sum = document.createElement("div"); sum.className = "today-sum";
+      for (const [type, n] of Object.entries(counts).sort((a, b) => b[1] - a[1])) {
+        const chip = document.createElement("span"); chip.className = "card " + type; chip.style.border = "0"; chip.style.padding = "4px 8px"; chip.style.display = "inline-block";
+        chip.textContent = `${n} ${label(type).toLowerCase()}`; sum.append(chip);
+      }
+      if (util.length) { const chip = document.createElement("span"); chip.textContent = `${util.length} light or water outage`; sum.append(chip); }
+      box.append(sum);
+      const items = document.createElement("div"); items.className = "today-list";
+      for (const r of road.slice(0, 3)) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "today-item";
+        const ic = document.createElement("span"); ic.innerHTML = iconHtml(r.type);
+        const d = document.createElement("div");
+        const tt = document.createElement("b"); tt.textContent = `${label(r.type)} · ${r.road || r.area || ""}`;
+        const ss = document.createElement("span"); ss.textContent = [r.road ? r.area : "", ago(lastSeen(r))].filter(Boolean).join(" · ");
+        d.append(tt, ss);
+        const dist = document.createElement("em"); const p = posOf(r); dist.textContent = fresh() && p ? fmtDist(hav(me, p)) : "";
+        b.append(ic.firstElementChild || ic, d, dist);
+        b.onclick = () => { hideToday(); const pp = posOf(r); if (pp) { follow = false; $("recenter").hidden = false; map.setView([pp.lat, pp.lng], 16); const mk = markers.get(r.id); if (mk) mk.openPopup(); } };
+        items.append(b);
+      }
+      box.append(items);
+      if (list.length > 3) { const all = document.createElement("button"); all.type = "button"; all.className = "linkish"; all.textContent = `See all ${list.length} reports`; all.onclick = () => { hideToday(); renderList(); openSheet("sheet-list"); }; box.append(all); }
+    }
+    box.hidden = false;
+  }
+  function openToday() { if (nav) return; todayOpen = true; renderToday(); }
+  $("open-today").onclick = () => { closeSheets(); openToday(); };
+  // Show on open, and again when someone comes back to the app after 30 minutes away
+  let todayShownAt = 0;
+  function maybeShowToday() {
+    if (nav || busy || ls.get("rg-today-off")) return;
+    if (Date.now() - todayShownAt < 30 * 60e3) return;
+    todayShownAt = Date.now(); openToday();
+  }
+  setTimeout(maybeShowToday, 2500);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeShowToday, 1500); });
+  // Refresh it when new reports arrive or the location first comes in
+  listeners.push(() => { if (todayOpen) renderToday(); });
+  let todayHadLoc = false;
+  setInterval(() => { if (todayOpen && fresh() && !todayHadLoc) { todayHadLoc = true; renderToday(); } }, 2000);
 
   /* ===== 13. Start ===== */
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
