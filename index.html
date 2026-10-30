@@ -79,7 +79,7 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .turn-text span { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Road today card */
-.today { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; display: grid; gap: 10px; max-height: 58vh; overflow-y: auto; }
+.today { background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; display: grid; gap: 10px; max-height: calc(100vh - var(--bh) - 100px - env(safe-area-inset-top, 0px)); overflow-y: auto; }
 .today-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .today-head div { display: grid; gap: 1px; min-width: 0; }
 .today-head b { font-family: var(--display); font-size: 19px; font-weight: 800; line-height: 1.15; }
@@ -128,7 +128,9 @@ input, select { font: inherit; font-size: 16px; color: var(--ink); }
 .warn-top div { min-width: 0; display: grid; }
 .warn-top b { font-family: var(--display); font-size: 20px; font-weight: 800; line-height: 1.1; }
 .warn-top span { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
-.warn-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.warn-btns { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+.share-btn { background: #1f7a4d !important; color: #fff !important; border-color: #1f7a4d !important; }
+.vote.share { background: #1f7a4d; border-color: #1f7a4d; color: #fff; }
 .warn-btns button { border-radius: 12px; padding: 12px; font-weight: 700; border: 1px solid var(--line); background: var(--bg); }
 .warn-btns .still { background: var(--cs); border-color: var(--c); color: var(--c); }
 
@@ -312,7 +314,7 @@ label .opt { font-weight: 400; color: var(--muted); }
   <div class="notice" id="notice" hidden><span id="notice-text"></span><button type="button" id="notice-x" aria-label="Close">✕</button></div>
   <div class="warn" id="warn" hidden>
     <div class="warn-top"><span class="pin-icon" id="warn-icon"></span><div><b id="warn-title"></b><span id="warn-sub"></span></div></div>
-    <div class="warn-btns"><button class="still" id="warn-still" type="button">E still dey</button><button id="warn-clear" type="button">E don clear</button></div>
+    <div class="warn-btns"><button class="still" id="warn-still" type="button">E still dey</button><button id="warn-clear" type="button">E don clear</button><button class="share-btn" id="warn-share" type="button">Share</button></div>
   </div>
 </div>
 
@@ -1111,7 +1113,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     el.innerHTML = `<div class="card-top"><span class="kind"></span><span class="when"></span></div>
       <h3 class="place"><span class="road"></span><small class="sub"></small></h3>
       <p class="note" hidden></p>
-      <div class="votes"><button class="vote yes" type="button"></button><button class="vote no" type="button"></button>${opts.pop ? "" : '<button class="vote ghost show" type="button">Show for map</button>'}</div>`;
+      <div class="votes"><button class="vote yes" type="button"></button><button class="vote no" type="button"></button><button class="vote share" type="button">Share</button>${opts.pop ? "" : '<button class="vote ghost show" type="button">Show for map</button>'}</div>`;
     el.querySelector(".kind").textContent = label(r.type);
     el.querySelector(".when").textContent = ago(r.createdAt) + (confirmed ? ` · seen ${ago(seen)}` : "");
     el.querySelector(".road").textContent = r.road || r.area || "Road no clear";
@@ -1121,6 +1123,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     yes.textContent = `E still dey (${keys(r.still).length})`; no.textContent = `E don clear (${keys(r.cleared).length})`;
     yes.setAttribute("aria-pressed", String(!!(r.still && r.still[DEVICE]))); no.setAttribute("aria-pressed", String(!!(r.cleared && r.cleared[DEVICE])));
     yes.onclick = () => vote(r.id, "still"); no.onclick = () => vote(r.id, "cleared");
+    el.querySelector(".share").onclick = () => shareReport(r);
     const show = el.querySelector(".show");
     if (show) show.onclick = () => { closeSheets(); const p = posOf(r); if (p) { follow = false; $("recenter").hidden = false; map.setView([p.lat, p.lng], 16); const mk = markers.get(r.id); if (mk) mk.openPopup(); } };
     return el;
@@ -1265,6 +1268,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   }
   $("warn-still").onclick = () => { if (warnFor) vote(warnFor.id, "still"); $("warn").hidden = true; };
   $("warn-clear").onclick = () => { if (warnFor) vote(warnFor.id, "cleared"); $("warn").hidden = true; };
+  $("warn-share").onclick = () => { if (warnFor) shareReport(warnFor); };
 
   /* ===== 7. Reporting (one tap) ===== */
   function fillAreaSelect() {
@@ -1328,6 +1332,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
     try {
       const res = await addOrMerge({ type, area, road: $("r-road").value.trim().slice(0, 80), note: $("r-note").value.trim().slice(0, 200), lat: pos.lat, lng: pos.lng });
       ls.set("rg-myarea", area); closeSheets();
+      if (res && !res.cooldown && !res.merged) offerShare({ type, area, road: $("r-road").value.trim(), createdAt: Date.now() });
       toast(res && res.cooldown ? `You just send report. Wait ${res.cooldown} seconds before you send another one.` : res && res.merged === "mine" ? "You don already report am. E still dey for map." : res && res.merged ? "Person don report am already. I add your own say e still dey. Thank you!" : res && res.queued ? "No network. I don save am, I go send am when network come back." : "You don drop am. Thank you!");
     } catch (e) { toast(rcMessage(e)); }
     finally { tilesEls.forEach(t => t.disabled = false); }
@@ -2036,7 +2041,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
           else if (res && res.merged === "mine") await say([{ c: "already-reported", t: "You don already report am. E still dey for map. Drive safe." }]);
           else if (res && res.merged) await say([{ c: "merged", t: "Person don report am already. I don add your own say e still dey. Thank you." }]);
           else if (res && res.queued) await say([{ c: "saved-offline", t: "Network no dey now. I don keep am, I go send am when network come back. Drive safe." }]);
-          else await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]);
+          else { await say([{ c: "dropped", t: "I don drop am. Thank you. Drive safe." }]); offerShare({ type, area, road, createdAt: Date.now() }); }
         }
         catch (e) { if (/RC_/.test(errText(e))) await say(rcMessage(e)); else await say([{ c: "network-error", t: "E no go. Network get wahala. Try again small time." }]); }
       } else if (ok === false) await say([{ c: "not-dropped", t: "Okay, I no drop am." }]);
@@ -2165,6 +2170,43 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
   setInterval(loadSponsors, 30 * 60e3);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(maybeShowSponsor, 8000); });
 
+  /* ===== Sharing: every share is a free advert with the link ===== */
+  const APP_LINK = location.origin + location.pathname.replace(/index\.html$/, "");
+  const whereOf = (r) => [r.road, r.area].filter(Boolean).join(", ");
+  function reportText(r) {
+    const when = Date.now() - (r.createdAt || Date.now()) < 3 * 60e3 ? "now now" : ago(lastSeen(r));
+    return `${label(r.type)} for ${whereOf(r) || "this area"}, ${when}.\n\nSee am live and get directions wey go round am, for Road Clear (free, for Pidgin):\n${APP_LINK}`;
+  }
+  function todayText(list) {
+    const place = (fresh() && (nearestArea(me) || (cityOf(me) && CITIES[cityOf(me)].name))) || (CITIES[curCity] && CITIES[curCity].name) || "my area";
+    const lines = list.filter(r => r.type !== "power" && r.type !== "water").slice(0, 5).map(r => `- ${label(r.type)}: ${whereOf(r)} (${ago(lastSeen(r))})`);
+    const more = list.length > lines.length ? `\n...and ${list.length - lines.length} more.` : "";
+    return `Road today near ${place}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}:\n${lines.join("\n")}${more}\n\nSee am live for Road Clear:\n${APP_LINK}`;
+  }
+  async function shareText(text) {
+    // Phone share menu first (WhatsApp, status, groups, SMS...), WhatsApp link if that's not available
+    if (navigator.share) { try { await navigator.share({ text }); countShare(); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    countShare();
+    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
+  }
+  const shareReport = (r) => shareText(reportText(r));
+  function countShare() { try { const n = +(ls.get("rg-shares") || 0) + 1; ls.set("rg-shares", String(n)); } catch {} }
+  // After you report: ask once to share (not while driving)
+  function offerShare(r) {
+    if (nav || (me && me.speed > 3.3)) return;
+    setTimeout(() => {
+      if (nav || busy || !$("sponsor-slot").hidden) return;
+      const ask = document.createElement("div"); ask.className = "ask";
+      const t = document.createElement("span"); t.textContent = "Tell your people make dem no enter am.";
+      const yes = document.createElement("button"); yes.type = "button"; yes.className = "yes share-btn"; yes.textContent = "Share";
+      const no = document.createElement("button"); no.type = "button"; no.textContent = "No";
+      const close = () => { $("sponsor-slot").hidden = true; $("sponsor-slot").replaceChildren(); };
+      yes.onclick = () => { close(); shareReport(r); }; no.onclick = close;
+      ask.append(t, yes, no); $("sponsor-slot").replaceChildren(ask); $("sponsor-slot").hidden = false;
+      setTimeout(() => { if ($("sponsor-slot").contains(ask)) close(); }, 15000);
+    }, 1500);
+  }
+
   /* ===== Road today: a short summary when the app opens, before people leave the house ===== */
   let todayOpen = false, todayRoute = null, todayRouteKey = "", todayRouteAt = 0, todayBusy = false;
   const NEARBY_KM = 15;
@@ -2245,6 +2287,7 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
 
     // what's around
     const list = nearbyReports();
+
     const road = list.filter(r => r.type !== "power" && r.type !== "water");
     const util = list.filter(r => r.type === "power" || r.type === "water");
     if (!list.length) {
@@ -2274,7 +2317,12 @@ function fmtDur(s) { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? 
         items.append(b);
       }
       box.append(items);
-      if (list.length > 3) { const all = document.createElement("button"); all.type = "button"; all.className = "linkish"; all.textContent = `See all ${list.length} reports`; all.onclick = () => { hideToday(); renderList(); openSheet("sheet-list"); }; box.append(all); }
+      const foot = document.createElement("div"); foot.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px";
+      const all = document.createElement("button"); all.type = "button"; all.className = "linkish"; all.textContent = list.length > 3 ? `See all ${list.length} reports` : "See on list";
+      all.onclick = () => { hideToday(); renderList(); openSheet("sheet-list"); };
+      const sh = document.createElement("button"); sh.type = "button"; sh.className = "vote share"; sh.textContent = "Share with your people";
+      sh.onclick = () => shareText(todayText(list));
+      foot.append(all, sh); box.append(foot);
     }
     box.hidden = false;
   }

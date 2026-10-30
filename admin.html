@@ -218,6 +218,9 @@ label { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
       </div>
       <input id="q" type="search" placeholder="Search area, road or note" aria-label="Search">
       <div class="row"><span class="small" id="count"></span><button class="btn ghost" id="refresh" type="button">Refresh</button></div>
+      <button class="btn" id="rush" type="button" style="background:#1f7a4d">Copy rush-hour post for WhatsApp</button>
+      <p class="small" style="margin:0">Uses the reports showing on the map now that match your filters. Tip: type an area like "Parow" in the search box first.</p>
+      <textarea id="rush-text" class="small" readonly hidden style="width:100%;min-height:150px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:14px"></textarea>
     </div>
 
     <div class="list" id="list"></div>
@@ -426,6 +429,7 @@ const CONFIG = {
       return true;
     });
     if (filter === "busy") list.sort((a, b) => (perPhone[b.device_id] - perPhone[a.device_id]) || (b.t - a.t));
+    lastShown = list;
     $("count").textContent = `${list.length} report${list.length === 1 ? "" : "s"}`;
     const box = $("list"); box.replaceChildren();
     if (!list.length) { box.innerHTML = '<div class="empty">No reports here.</div>'; return; }
@@ -457,6 +461,7 @@ const CONFIG = {
       const blk = document.createElement("button"); blk.type = "button"; blk.className = "blk"; blk.textContent = "Block phone";
       blk.onclick = () => askBlock(el, r, n); acts.append(blk);
     }
+    if (isLive(r)) { const w = document.createElement("a"); w.href = "https://wa.me/?text=" + encodeURIComponent(postFor([r])); w.target = "_blank"; w.rel = "noopener"; w.textContent = "WhatsApp"; w.style.color = "#1f7a4d"; acts.append(w); }
     if (r.lat != null) { const a = document.createElement("a"); a.href = `https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}`; a.target = "_blank"; a.rel = "noopener"; a.textContent = "See on map"; acts.append(a); }
     return el;
   }
@@ -520,6 +525,26 @@ const CONFIG = {
   $("q").addEventListener("input", render);
   $("days").onchange = load;
   $("refresh").onclick = load;
+  // Rush-hour post: real alerts people can act on, with the link
+  const APP_LINK = location.origin + location.pathname.replace(/admin\.html$/, "");
+  const LABEL_OF = (t) => LABELS[t] || t;
+  let lastShown = [];
+  function postFor(list) {
+    const h = new Date().getHours(), part = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+    const when = (r) => { const m = Math.floor((Date.now() - lastSeen(r)) / 60e3); return m < 2 ? "now now" : m < 60 ? m + " min ago" : Math.floor(m / 60) + " h ago"; };
+    if (list.length === 1) { const r = list[0]; return `${LABEL_OF(r.type)} for ${[r.road, r.area].filter(Boolean).join(", ")}, ${when(r)}.\n\nSee am live and get directions wey go round am, for Road Clear (free, for Pidgin):\n${APP_LINK}`; }
+    const lines = list.slice(0, 8).map(r => `- ${LABEL_OF(r.type)}: ${[r.road, r.area].filter(Boolean).join(", ")} (${when(r)})`);
+    const more = list.length > 8 ? `\n...and ${list.length - 8} more for the app.` : "";
+    return `Road update this ${part}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}:\n${lines.join("\n")}${more}\n\nSee am live, report wetin you see, and get directions wey go round am. Road Clear, free, for Pidgin:\n${APP_LINK}`;
+  }
+  $("rush").onclick = async () => {
+    const live = lastShown.filter(isLive).filter(r => r.type !== "power" && r.type !== "water");
+    if (!live.length) { toast("No live road reports match your filters right now."); return; }
+    const text = postFor(live), ta = $("rush-text");
+    ta.value = text; ta.hidden = false;
+    try { await navigator.clipboard.writeText(text); toast("Copied. Paste am for WhatsApp group or status."); }
+    catch { ta.focus(); ta.select(); toast("Select the text and copy am."); }
+  };
   setInterval(() => { if (!$("app").hidden && !openConfirm) load(); }, 60e3);
   enter();
 })();
